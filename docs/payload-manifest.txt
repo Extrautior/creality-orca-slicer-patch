@@ -1,0 +1,205 @@
+orca-slicer.exe
+OrcaSlicer.dll
+resources/profiles/Creality/machineList.json
+resources/web/deviceMgr/index.html
+resources/web/deviceMgr/assets/CQKv4dak.js
+resources/web/deviceMgr/assets/CReFMIpA.js
+resources/web/deviceMgr/assets/filament-DIWyWcvx.png
+resources/web/deviceMgr/assets/iconfont-B-lUTA3b.woff2
+resources/web/deviceMgr/assets/iconfont-C8ZDLEAq.ttf
+resources/web/deviceMgr/assets/iconfont-CdeFiiLn.woff
+resources/web/deviceMgr/assets/k1max-DyYhpnup.jpg
+resources/web/deviceMgr/assets/live_no_camera-C8IYwt5f.png
+resources/web/deviceMgr/assets/white_theme-w7wzNwOC.png
+resources/web/deviceMgr/assets/img/1.jpg
+resources/web/deviceMgr/assets/img/addPrinter_Printer.png
+resources/web/deviceMgr/assets/img/addPrinter_SonicPad.png
+resources/web/deviceMgr/assets/img/default.png
+resources/web/deviceMgr/assets/img/file.png
+resources/web/deviceMgr/assets/img/humidity-dark.svg
+resources/web/deviceMgr/assets/img/humidity-light.svg
+resources/web/deviceMgr/assets/img/humidity.svg
+resources/web/deviceMgr/assets/img/k1device.png
+resources/web/deviceMgr/assets/img/k1max.jpg
+resources/web/deviceMgr/assets/img/printerImgDefault.svg
+resources/web/deviceMgr/assets/img/RFID-dark.svg
+resources/web/deviceMgr/assets/img/RFID-light.svg
+resources/web/deviceMgr/assets/img/machine/Bambu Lab A1.png
+resources/web/deviceMgr/assets/img/machine/CP-TP450.png
+resources/web/deviceMgr/assets/img/machine/CR-K1 Max.png
+resources/web/deviceMgr/assets/img/machine/CR-K1.png
+resources/web/deviceMgr/assets/img/machine/Ender-3 S1 Plus.png
+resources/web/deviceMgr/assets/img/machine/Ender-3 S1 Pro.png
+resources/web/deviceMgr/assets/img/machine/Ender-3 S1.png
+resources/web/deviceMgr/assets/img/machine/Ender-3 V3 SE.png
+resources/web/deviceMgr/assets/img/machine/Ender-3.png
+resources/web/deviceMgr/assets/img/machine/Ender-5 S1.png
+resources/web/deviceMgr/assets/img/machine/F001.png
+resources/web/deviceMgr/assets/img/machine/F002.png
+resources/web/deviceMgr/assets/img/machine/F003.png
+resources/web/deviceMgr/assets/img/machine/F004.png
+resources/web/deviceMgr/assets/img/machine/F005.png
+resources/web/deviceMgr/assets/img/machine/F006.png
+resources/web/deviceMgr/assets/img/machine/F008.png
+resources/web/deviceMgr/assets/img/machine/F018.png
+resources/web/deviceMgr/assets/img/machine/K1 Max.png
+resources/web/deviceMgr/assets/img/machine/K1 SE.png
+resources/web/deviceMgr/assets/img/machine/K1.png
+resources/web/deviceMgr/assets/img/machine/K1C.png
+resources/web/deviceMgr/deviceMgr/index.html
+resources/web/deviceMgr/deviceMgr/assets/CQKv4dak.js
+resources/web/deviceMgr/deviceMgr/assets/CReFMIpA.js
+resources/web/deviceMgr/deviceMgr/assets/filament-DIWyWcvx.png
+resources/web/deviceMgr/deviceMgr/assets/iconfont-B-lUTA3b.woff2
+resources/web/deviceMgr/deviceMgr/assets/iconfont-C8ZDLEAq.ttf
+resources/web/deviceMgr/deviceMgr/assets/iconfont-CdeFiiLn.woff
+resources/web/deviceMgr/deviceMgr/assets/k1max-DyYhpnup.jpg
+resources/web/deviceMgr/deviceMgr/assets/live_no_camera-C8IYwt5f.png
+resources/web/deviceMgr/deviceMgr/assets/white_theme-w7wzNwOC.png
+resources/web/deviceMgr/deviceMgr/assets/img/1.jpg
+resources/web/deviceMgr/deviceMgr/assets/img/addPrinter_Printer.png
+resources/web/deviceMgr/deviceMgr/assets/img/addPrinter_SonicPad.png
+resources/web/deviceMgr/deviceMgr/assets/img/default.png
+resources/web/deviceMgr/deviceMgr/assets/img/file.png
+resources/web/deviceMgr/deviceMgr/assets/img/humidity-dark.svg
+resources/web/deviceMgr/deviceMgr/assets/img/humidity-light.svg
+resources/web/deviceMgr/deviceMgr/assets/img/humidity.svg
+resources/web/deviceMgr/deviceMgr/assets/img/k1device.png
+resources/web/deviceMgr/deviceMgr/assets/img/k1max.jpg
+resources/web/deviceMgr/deviceMgr/assets/img/printerImgDefault.svg
+resources/web/deviceMgr/deviceMgr/assets/img/RFID-dark.svg
+resources/web/deviceMgr/deviceMgr/assets/img/RFID-light.svg
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Bambu Lab A1.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/CP-TP450.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/CR-K1 Max.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/CR-K1.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1 Plus.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1 Pro.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 V3 SE.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-5 S1.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F001.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F002.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F003.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F004.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F005.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F006.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F008.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/F018.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/K1 Max.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/K1 SE.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/K1.png
+resources/web/deviceMgr/deviceMgr/assets/img/machine/K1C.png
+resources/web/deviceMgr/deviceMgr/img/1.jpg
+resources/web/deviceMgr/deviceMgr/img/addPrinter_Printer.png
+resources/web/deviceMgr/deviceMgr/img/addPrinter_SonicPad.png
+resources/web/deviceMgr/deviceMgr/img/app-domestic.png
+resources/web/deviceMgr/deviceMgr/img/bg_plate_dark.svg
+resources/web/deviceMgr/deviceMgr/img/bg_plate_white.svg
+resources/web/deviceMgr/deviceMgr/img/blanking.svg
+resources/web/deviceMgr/deviceMgr/img/cx.png
+resources/web/deviceMgr/deviceMgr/img/default.png
+resources/web/deviceMgr/deviceMgr/img/file.png
+resources/web/deviceMgr/deviceMgr/img/groupEmpty.png
+resources/web/deviceMgr/deviceMgr/img/http.png
+resources/web/deviceMgr/deviceMgr/img/humidity-dark.svg
+resources/web/deviceMgr/deviceMgr/img/humidity-light.svg
+resources/web/deviceMgr/deviceMgr/img/humidity.svg
+resources/web/deviceMgr/deviceMgr/img/info_tip.svg
+resources/web/deviceMgr/deviceMgr/img/ip.png
+resources/web/deviceMgr/deviceMgr/img/k1device.png
+resources/web/deviceMgr/deviceMgr/img/k1max.jpg
+resources/web/deviceMgr/deviceMgr/img/loading_dark.png
+resources/web/deviceMgr/deviceMgr/img/loading_light.png
+resources/web/deviceMgr/deviceMgr/img/logo.png
+resources/web/deviceMgr/deviceMgr/img/materialDisableBg.png
+resources/web/deviceMgr/deviceMgr/img/no_net_dark.png
+resources/web/deviceMgr/deviceMgr/img/no_net_light.png
+resources/web/deviceMgr/deviceMgr/img/no-color.png
+resources/web/deviceMgr/deviceMgr/img/other.png
+resources/web/deviceMgr/deviceMgr/img/printer1_cfs.png
+resources/web/deviceMgr/deviceMgr/img/printer1.png
+resources/web/deviceMgr/deviceMgr/img/printer2_cfs.png
+resources/web/deviceMgr/deviceMgr/img/printer2.png
+resources/web/deviceMgr/deviceMgr/img/printerImgDefault.svg
+resources/web/deviceMgr/deviceMgr/img/replay_btn.svg
+resources/web/deviceMgr/deviceMgr/img/RFID-dark.svg
+resources/web/deviceMgr/deviceMgr/img/RFID-light.svg
+resources/web/deviceMgr/deviceMgr/img/warning.png
+resources/web/deviceMgr/deviceMgr/img/machine/Bambu Lab A1.png
+resources/web/deviceMgr/deviceMgr/img/machine/CP-TP450.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1 Plus.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1 Pro.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 V3 SE.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-3.png
+resources/web/deviceMgr/deviceMgr/img/machine/Ender-5 S1.png
+resources/web/deviceMgr/deviceMgr/img/machine/F001.png
+resources/web/deviceMgr/deviceMgr/img/machine/F002.png
+resources/web/deviceMgr/deviceMgr/img/machine/F003.png
+resources/web/deviceMgr/deviceMgr/img/machine/F004.png
+resources/web/deviceMgr/deviceMgr/img/machine/F005.png
+resources/web/deviceMgr/deviceMgr/img/machine/F006.png
+resources/web/deviceMgr/deviceMgr/img/machine/F008.png
+resources/web/deviceMgr/deviceMgr/img/machine/F018.png
+resources/web/deviceMgr/deviceMgr/img/machine/K1 Max.png
+resources/web/deviceMgr/deviceMgr/img/machine/K1 SE.png
+resources/web/deviceMgr/deviceMgr/img/machine/K1.png
+resources/web/deviceMgr/deviceMgr/img/machine/K1C.png
+resources/web/deviceMgr/img/1.jpg
+resources/web/deviceMgr/img/addPrinter_Printer.png
+resources/web/deviceMgr/img/addPrinter_SonicPad.png
+resources/web/deviceMgr/img/app-domestic.png
+resources/web/deviceMgr/img/bg_plate_dark.svg
+resources/web/deviceMgr/img/bg_plate_white.svg
+resources/web/deviceMgr/img/blanking.svg
+resources/web/deviceMgr/img/cx.png
+resources/web/deviceMgr/img/default.png
+resources/web/deviceMgr/img/file.png
+resources/web/deviceMgr/img/groupEmpty.png
+resources/web/deviceMgr/img/http.png
+resources/web/deviceMgr/img/humidity-dark.svg
+resources/web/deviceMgr/img/humidity-light.svg
+resources/web/deviceMgr/img/humidity.svg
+resources/web/deviceMgr/img/info_tip.svg
+resources/web/deviceMgr/img/ip.png
+resources/web/deviceMgr/img/k1device.png
+resources/web/deviceMgr/img/k1max.jpg
+resources/web/deviceMgr/img/loading_dark.png
+resources/web/deviceMgr/img/loading_light.png
+resources/web/deviceMgr/img/logo.png
+resources/web/deviceMgr/img/materialDisableBg.png
+resources/web/deviceMgr/img/no_net_dark.png
+resources/web/deviceMgr/img/no_net_light.png
+resources/web/deviceMgr/img/no-color.png
+resources/web/deviceMgr/img/other.png
+resources/web/deviceMgr/img/printer1_cfs.png
+resources/web/deviceMgr/img/printer1.png
+resources/web/deviceMgr/img/printer2_cfs.png
+resources/web/deviceMgr/img/printer2.png
+resources/web/deviceMgr/img/printerImgDefault.svg
+resources/web/deviceMgr/img/replay_btn.svg
+resources/web/deviceMgr/img/RFID-dark.svg
+resources/web/deviceMgr/img/RFID-light.svg
+resources/web/deviceMgr/img/warning.png
+resources/web/deviceMgr/img/machine/Bambu Lab A1.png
+resources/web/deviceMgr/img/machine/CP-TP450.png
+resources/web/deviceMgr/img/machine/Ender-3 S1 Plus.png
+resources/web/deviceMgr/img/machine/Ender-3 S1 Pro.png
+resources/web/deviceMgr/img/machine/Ender-3 S1.png
+resources/web/deviceMgr/img/machine/Ender-3 V3 SE.png
+resources/web/deviceMgr/img/machine/Ender-3.png
+resources/web/deviceMgr/img/machine/Ender-5 S1.png
+resources/web/deviceMgr/img/machine/F001.png
+resources/web/deviceMgr/img/machine/F002.png
+resources/web/deviceMgr/img/machine/F003.png
+resources/web/deviceMgr/img/machine/F004.png
+resources/web/deviceMgr/img/machine/F005.png
+resources/web/deviceMgr/img/machine/F006.png
+resources/web/deviceMgr/img/machine/F008.png
+resources/web/deviceMgr/img/machine/F018.png
+resources/web/deviceMgr/img/machine/K1 Max.png
+resources/web/deviceMgr/img/machine/K1 SE.png
+resources/web/deviceMgr/img/machine/K1.png
+resources/web/deviceMgr/img/machine/K1C.png
