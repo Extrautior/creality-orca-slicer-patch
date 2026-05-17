@@ -16,7 +16,6 @@ It is meant to patch a normal OrcaSlicer install in place.
   - emits `flush_volumes_changed = 1`;
   - bakes Creality flush multiplier changes into `flush_volumes_matrix`;
   - keeps generated Creality G-code multiplier at `1`.
-- Installer UI fix so the progress bar reaches 100 percent on completion.
 
 ## Download
 
