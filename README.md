@@ -2,7 +2,7 @@
 
 This repository packages the Creality Hi / CFS support patch for the stable OrcaSlicer 2.3.2 Windows install.
 
-It is meant to patch a normal OrcaSlicer install in place, without replacing it with the OrcaSlicer 2.4 development build.
+It is meant to patch a normal OrcaSlicer install in place.
 
 ## What This Adds
 
