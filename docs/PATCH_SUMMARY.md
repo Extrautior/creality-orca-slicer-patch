@@ -48,6 +48,18 @@ The patch intentionally avoids OrcaSlicer 2.4-only settings such as:
 
 Those options caused startup crashes when accidentally packaged into the 2.3.2 stable patch.
 
+## Creality Hi Startup G-code
+
+The bundled Creality Hi 0.4 and 0.6 nozzle profiles set the first-layer bed target before `START_PRINT`:
+
+```gcode
+M140 S[bed_temperature_initial_layer_single]
+M104 S0
+START_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]
+```
+
+This avoids the printer reporting a bed target of `0` during the early park/nozzle-heat stage.
+
 ## Installer
 
 The installer is a single-file WinForms app that embeds the payload ZIP, backs up overwritten files, then overlays the payload with `robocopy`.

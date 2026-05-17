@@ -88,4 +88,5 @@ Select-String -Path 'payload\root\OrcaSlicer.dll' -Pattern 'flush_volumes_change
 - Upload dialog shows CFS filament mapping.
 - Upload and upload-and-print still work.
 - Device page file import and export work.
+- Creality Hi generated G-code starts with `M140 S[bed_temperature_initial_layer_single]`, not `M140 S0`.
 - Installer progress reaches 100 percent and shows `Done`.

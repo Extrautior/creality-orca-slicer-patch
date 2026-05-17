@@ -12,6 +12,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 - Creality CFS filament mapping during print upload.
 - Camera/WebRTC bridge fixes for the embedded Creality device page.
 - Local file export bridge for the device page.
+- Creality Hi startup G-code fix so the bed target is set before `START_PRINT`.
 - CFS flush volume compatibility:
   - emits `flush_volumes_changed = 1`;
   - bakes Creality flush multiplier changes into `flush_volumes_matrix`;
@@ -21,7 +22,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 
 Use the installer from the latest GitHub release:
 
-`Creality-OrcaSlicer-2.3.2-Patch-Installer-FINAL-20260516-233148.exe`
+`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260517-222845.exe`
 
 The checksum is stored in `release/SHA256SUMS.txt`.
 
@@ -56,3 +57,5 @@ The installer backs up overwritten files under:
 ## Notes
 
 This is an unofficial compatibility patch. It is focused on the Creality Hi and CFS workflow that was missing from stock OrcaSlicer.
+
+Existing custom printer profiles may keep their old Machine start G-code. If a custom Creality Hi profile still starts with `M140 S0`, change that first line to `M140 S[bed_temperature_initial_layer_single]` and save the custom profile.
