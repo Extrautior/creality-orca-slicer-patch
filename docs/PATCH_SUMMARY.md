@@ -22,6 +22,8 @@ The patch restores the Creality upload dialog path in `src/slic3r/GUI/Plater.cpp
 
 That dialog shows the CFS mapping controls before upload, and passes `colorMatch_N` values through the print host upload data.
 
+When the printer reports an external spool holder, the send dialog also shows a `Filament Device` choice for `CFS` or `Spool Holder`. Selecting `Spool Holder` maps the print to the external slot and uses the external-spool print command path instead of CFS color matching.
+
 `src/slic3r/Utils/CrealityPrint.cpp` has a fallback mapping path so upload can still build a CFS color list when the dialog data is missing.
 
 ## Flush Volumes

@@ -86,6 +86,7 @@ Select-String -Path 'payload\root\OrcaSlicer.dll' -Pattern 'flush_volumes_change
 - Camera loads and recovers after leaving the Device page open.
 - CFS sync button appears for Creality Print hosts.
 - Upload dialog shows CFS filament mapping.
+- Upload dialog shows the external spool holder option when the printer reports an external spool.
 - Upload and upload-and-print still work.
 - Device page file import and export work.
 - Creality Hi generated G-code starts with `M140 S[bed_temperature_initial_layer_single]`, not `M140 S0`.
