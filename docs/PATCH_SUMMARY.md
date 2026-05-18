@@ -13,6 +13,7 @@ The bridge in `src/slic3r/GUI/PrinterWebView.cpp` supplies the data and callback
 - file export/download callback;
 - WebRTC camera negotiation;
 - camera watchdog reload if the embedded page gets stuck on loading.
+- injected `Logo LED` control for the Creality Hi logo light using Moonraker `SET_PIN PIN=LED`.
 
 The printer itself is not modified.
 

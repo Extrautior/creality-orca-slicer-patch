@@ -1,1 +1,1 @@
-573e091aa8a40833cd36d305122f7924b19dd5bf59aecc3eea5995ff6cb4bed2  Creality-OrcaSlicer-2.3.2-Patch-Installer-20260518-161404.exe
+d58249b9a266af4461876153d8fdda94d7ea9cebbf10658a155e1a4c5801ff12  Creality-OrcaSlicer-2.3.2-Patch-Installer-20260518-170751.exe
