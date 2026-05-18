@@ -41,6 +41,8 @@ whenever a flush matrix is written into the G-code config block.
 
 For Creality Print hosts, `WipeTowerDialog.cpp` bakes the UI flush multiplier into the stored matrix and resets the multiplier to `1`. This preserves the calculated flush values while avoiding Creality firmware/device-side handling problems with sub-1 multipliers.
 
+`GCodeViewer.cpp` also shows a `Flushed` estimate in the Preview filament table when CFS/color changes exist. If the G-code processor did not record direct flush extrusion, the preview calculates the estimate from `filament_change_count_map` and `flush_volumes_matrix` so the user can see expected flush usage even without a prime tower.
+
 ## 2.3.2 Compatibility
 
 The patch intentionally avoids OrcaSlicer 2.4-only settings such as:

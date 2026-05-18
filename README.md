@@ -11,6 +11,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 - Creality CFS filament sync and CFS-aware upload dialog.
 - Creality CFS filament mapping during print upload.
 - External spool holder selection in the Creality send/upload dialog.
+- Preview `Flushed` estimate column for CFS/color changes calculated from the flush matrix.
 - Camera/WebRTC bridge fixes for the embedded Creality device page.
 - Local file export bridge for the device page.
 - Creality Hi startup G-code fix so the bed target is set before `START_PRINT`.
@@ -23,7 +24,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 
 Use the installer from the latest GitHub release:
 
-`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260518-150851.exe`
+`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260518-161404.exe`
 
 The checksum is stored in `release/SHA256SUMS.txt`.
 
