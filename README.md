@@ -16,6 +16,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 - Local file export bridge for the device page.
 - Creality Hi logo LED toggle on the Device page.
 - Creality Hi startup G-code fix so the bed target is set before `START_PRINT`.
+- Windows maximize bounds fix so the borderless window fills the working area without clipping the top or left UI.
 - CFS flush volume compatibility:
   - emits `flush_volumes_changed = 1`;
   - bakes Creality flush multiplier changes into `flush_volumes_matrix`;
@@ -25,7 +26,7 @@ It is meant to patch a normal OrcaSlicer install in place.
 
 Use the installer from the latest GitHub release:
 
-`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260518-170751.exe`
+`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260519-114649.exe`
 
 The checksum is stored in `release/SHA256SUMS.txt`.
 

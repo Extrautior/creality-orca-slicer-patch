@@ -725,6 +725,70 @@ index 7e4853d19f..1f745522e6 100644
                  auto volume_type = (*m_objects)[obj_idx]->volumes[vol_idx]->type();
                  if (volume_type != ModelVolumeType::MODEL_PART && volume_type != ModelVolumeType::PARAMETER_MODIFIER)
                      continue;
+diff --git a/src/slic3r/GUI/MainFrame.cpp b/src/slic3r/GUI/MainFrame.cpp
+index 7e7bdb04dc..f5aa1f115e 100644
+--- a/src/slic3r/GUI/MainFrame.cpp
++++ b/src/slic3r/GUI/MainFrame.cpp
+@@ -779,6 +779,30 @@ void MainFrame::bind_diff_dialog()
+ 
+ #ifdef __WIN32__
+ 
++static void SetMaximizedSizeForMonitorWorkArea(const HWND hWnd, MINMAXINFO* mmi)
++{
++    const HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
++    if (!monitor)
++        return;
++
++    MONITORINFO mi;
++    mi.cbSize = sizeof(MONITORINFO);
++    if (!GetMonitorInfo(monitor, &mi))
++        return;
++
++    const RECT& work    = mi.rcWork;
++    const RECT& monitor_rect = mi.rcMonitor;
++    mmi->ptMaxPosition.x = work.left - monitor_rect.left;
++    mmi->ptMaxPosition.y = work.top - monitor_rect.top;
++    mmi->ptMaxSize.x     = work.right - work.left;
++    mmi->ptMaxSize.y     = work.bottom - work.top;
++
++    // Keep normal resize limits at least as large as the monitor. The maximized
++    // size itself still uses rcWork so it does not cover a visible taskbar.
++    mmi->ptMaxTrackSize.x = monitor_rect.right - monitor_rect.left;
++    mmi->ptMaxTrackSize.y = monitor_rect.bottom - monitor_rect.top;
++}
++
+ // Orca: Fix maximized window overlaps taskbar when taskbar auto hide is enabled (#8085)
+ // Adopted from https://gist.github.com/MortenChristiansen/6463580
+ static void AdjustWorkingAreaForAutoHide(const HWND hWnd, MINMAXINFO* mmi)
+@@ -873,8 +897,19 @@ WXLRESULT MainFrame::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam
+                 sz->rgrc[0].left += borderThickness.left;
+                 sz->rgrc[0].right -= borderThickness.right;
+                 sz->rgrc[0].bottom -= borderThickness.bottom;
+-                return 0;
+             }
++            else {
++                RECT borderThickness;
++                SetRectEmpty(&borderThickness);
++                AdjustWindowRectEx(&borderThickness, GetWindowLongPtr(hWnd, GWL_STYLE) & ~WS_CAPTION, FALSE, NULL);
++                borderThickness.left *= -1;
++                borderThickness.top *= -1;
++                NCCALCSIZE_PARAMS *sz = reinterpret_cast<NCCALCSIZE_PARAMS *>(lParam);
++                sz->rgrc[0].left += borderThickness.left;
++                sz->rgrc[0].right -= borderThickness.right;
++                sz->rgrc[0].bottom -= borderThickness.bottom;
++            }
++            return 0;
+         }
+         break;
+ 
+@@ -911,6 +946,7 @@ WXLRESULT MainFrame::MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam
+     case WM_GETMINMAXINFO: {
+         auto mmi = (MINMAXINFO*) lParam;
+         HandleGetMinMaxInfo(mmi);
++        SetMaximizedSizeForMonitorWorkArea(hWnd, mmi);
+         AdjustWorkingAreaForAutoHide(hWnd, mmi);
+         return 0;
+     }
 diff --git a/src/slic3r/GUI/ObjectDataViewModel.cpp b/src/slic3r/GUI/ObjectDataViewModel.cpp
 index a7d2f711bf..71853b87b4 100644
 --- a/src/slic3r/GUI/ObjectDataViewModel.cpp

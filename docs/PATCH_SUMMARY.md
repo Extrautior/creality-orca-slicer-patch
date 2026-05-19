@@ -65,6 +65,10 @@ START_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_tempe
 
 This avoids the printer reporting a bed target of `0` during the early park/nozzle-heat stage.
 
+## Windows Maximize
+
+`MainFrame.cpp` keeps the borderless Windows frame inside the monitor working area when maximized. This avoids covering the taskbar and prevents the top/left toolbar area from being clipped by the invisible resize border.
+
 ## Installer
 
 The installer is a single-file WinForms app that embeds the payload ZIP, backs up overwritten files, then overlays the payload with `robocopy`.
