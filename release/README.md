@@ -1,9 +1,14 @@
 # Release Files
 
-The installer EXE is published as a GitHub Release asset because it is larger than GitHub's normal repository file limit.
+Large binaries are published as GitHub Release assets.
 
-Download the current installer from the latest release:
+The current `2.4.0-beta` prerelease includes:
 
-https://github.com/Extrautior/creality-orca-slicer-patch/releases/latest
+- `Creality-OrcaSlicer-2.4.0-beta-Patch-Installer.exe`
+- `creality-orca-patcher-2.4.0-beta-release.zip`
+- `Creality-OrcaSlicer-2.4.0-beta-Patcher-Source.zip`
+- `creality-orca-2.4.0-beta.patch`
+- `README.md`
+- `SHA256SUMS.txt`
 
-Verify it with `SHA256SUMS.txt`.
+Verify downloaded files against `SHA256SUMS.txt`.

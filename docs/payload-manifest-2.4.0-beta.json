@@ -1,0 +1,1047 @@
+{
+  "PatchId": "creality-cfs-orca-2.4.0-beta-r1-20260612",
+  "Name": "Creality Hi / CFS Patch for OrcaSlicer 2.4.0-beta",
+  "TargetVersion": "2.4.0-beta",
+  "TargetCommit": "fc9a8aa93f7d341c3028d275781d77d2f385023e",
+  "ExpectedCleanCore": {
+    "orca-slicer.exe": "4D4B992371745AC1C7409647A5797611D35E997C00FCF07E55C319AC907F5E6E",
+    "OrcaSlicer.dll": "8C8A6E2899F30F226ED5419F18C6F1298F731F998188EF264B8E9869E7F8C5DA"
+  },
+  "Files": [
+    {
+      "RelativePath": "orca-slicer.exe",
+      "Size": 270848,
+      "Sha256": "9832F784578D0CB8F4189C72C0CE637073BA21A934277997AB6E15D8D33170D2"
+    },
+    {
+      "RelativePath": "OrcaSlicer.dll",
+      "Size": 97118720,
+      "Sha256": "A370104E63682EAB1F066005A4A42BBD6426E7BC364CD32701513F3631BFE3EB"
+    },
+    {
+      "RelativePath": "resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json",
+      "Size": 5415,
+      "Sha256": "727CDBBA15BF532B356BA2E9ED99EF87D88A4C9FDC0D4430A07AFEC4AB07031F"
+    },
+    {
+      "RelativePath": "resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json",
+      "Size": 5414,
+      "Sha256": "0A802812944A2B7A15F0704B3D27C805F76D00ACE7AEF96701577E9E79D4BFD4"
+    },
+    {
+      "RelativePath": "resources/profiles/Creality/machineList.json",
+      "Size": 46953,
+      "Sha256": "D43952D15B8AE4E4E601340F88B4357465D3E33C5B96324C696D1198C61D4F6E"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/CQKv4dak.js",
+      "Size": 6068530,
+      "Sha256": "94BE88BF4E173FC11BEB5775D91DE662FA6C22D65F1F43F0CCCB4F0AEA22413E"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/CReFMIpA.js",
+      "Size": 6168667,
+      "Sha256": "96CF27C546078418BB13DF46808E3C5C91DAF8526FB7416B26F3B1D8CF6455A4"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/filament-DIWyWcvx.png",
+      "Size": 24351,
+      "Sha256": "2CD63B55322CDFA481EEE63832E3F86CCF3D26D87571366C8D9AD2AEF5644301"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/iconfont-B-lUTA3b.woff2",
+      "Size": 9128,
+      "Sha256": "51B30B823095894DE238A4C3C9288923C1596EF516C2408B892AA68D207A0E35"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/iconfont-C8ZDLEAq.ttf",
+      "Size": 16784,
+      "Sha256": "989DE5F223A6F9E28EA5BAD2A947C262E64760E85F6E09A1D51A5E6FE3583598"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/iconfont-CdeFiiLn.woff",
+      "Size": 10552,
+      "Sha256": "8B64D6F618793AC878D043061A115889A30D26925BB65D03E4C935FD2F809FE5"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/1.jpg",
+      "Size": 4667,
+      "Sha256": "D502F1A4A73A4F29041CF5DFB1E7B69DC9B446C0B67C063522EED96F3CC92030"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/addPrinter_Printer.png",
+      "Size": 3921,
+      "Sha256": "0E1E5B392F55151BFF10DDBEDE9472408FAB11FD6D2B724153830981E5587FBC"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/addPrinter_SonicPad.png",
+      "Size": 6535,
+      "Sha256": "FDD44E164671B64820D96C2029DAF87EA4EE8D199DD69DC958C017B4D82BF478"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/default.png",
+      "Size": 2573,
+      "Sha256": "60A5BB1A8B097CAD8033052D881817B32182CA28440EDC83D608F7017F957403"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/file.png",
+      "Size": 5766,
+      "Sha256": "211172D3AA2FB65CD2E67216FD14901A28631BF69D33109D908B805B38B57802"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/humidity-dark.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/humidity-light.svg",
+      "Size": 11831,
+      "Sha256": "68FFB2D3398CC6605A1B81B28CD657FD4206750AE12D863D9D17A084C4200AF9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/humidity.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/k1device.png",
+      "Size": 103364,
+      "Sha256": "8D55323A41807F6354495740EACBF47C994CD9AC03BB8F2764A4DB50175A3777"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/k1max.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Bambu Lab A1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/CP-TP450.png",
+      "Size": 37880,
+      "Sha256": "493F3A6F2A55B294D7216F5438698E56E35074E4977A4D19FFA3DB8228597FBD"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/CR-K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/CR-K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-3 S1 Plus.png",
+      "Size": 121800,
+      "Sha256": "22190CA8E06B8B846C2BCC0B923489E4AC008BB163326C7AB415902A5B959108"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-3 S1 Pro.png",
+      "Size": 163179,
+      "Sha256": "BC6A840DBD923BE8F2F859FC3693377B05B6B6059F2772445E46D977488B4459"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-3 S1.png",
+      "Size": 157534,
+      "Sha256": "F1DDFB52E0EBEB9FCC2A6E76077699FD49814BCD28C3603B20AAEFB7784CDB48"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-3 V3 SE.png",
+      "Size": 161862,
+      "Sha256": "CD3EA5F1A50CF8E64173C9840B1BC6F42FA1AB22CA528387F562CBB4FD09A9F2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-3.png",
+      "Size": 265230,
+      "Sha256": "3F1D895A73A8F00519315C458BE3563168F9D8AF646691DF10FC8391035E8849"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/Ender-5 S1.png",
+      "Size": 37920,
+      "Sha256": "9686A889C38FCFF1CD23AB3F7C1928848093EA415C3C417A353C77DD8777063C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F001.png",
+      "Size": 206713,
+      "Sha256": "D72D2BC2CC75D48D6D8ADE6624F3213B83F118AD2822E2C50F442D53D6525378"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F002.png",
+      "Size": 330719,
+      "Sha256": "60E11CE1B7E8D7FE7D57CC6146EDCD2234F5C1201A84C040AA0E630D5E2B7815"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F003.png",
+      "Size": 76823,
+      "Sha256": "96FADF51DA907F6295FB6B08B965725AA33DE41879C14FAEF883AA47DA40F36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F004.png",
+      "Size": 275692,
+      "Sha256": "20A0C2FBC097BEE772DEF8F15BE2CE3DC90F2C1EFE48D3611D9B0AC23926E36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F005.png",
+      "Size": 176563,
+      "Sha256": "07D3DD8E1F83465713F8E69E34195C6B27295CB3DBBB0715F7D84BB93CF246A6"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F006.png",
+      "Size": 36550,
+      "Sha256": "0687740FF874A818A4AA9E1B0BA2D65AE541D53E26B7A66BA1A4E3CBD420C76A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F008.png",
+      "Size": 162666,
+      "Sha256": "252A058838E5A9828CEB3B9A33E7024688CA693E1E9E3158FA1FE018CB3CEA3C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/F018.png",
+      "Size": 21596,
+      "Sha256": "26CD5946C4D8E137AAD9EBC9C42822D84F73DFE68AF25CC751FFD2FA5FEFA433"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/K1 SE.png",
+      "Size": 168277,
+      "Sha256": "DED412E3B07D2B7B99420EF7B2D240ED62764A44C9DD58D3A1B367FB44D80142"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/machine/K1C.png",
+      "Size": 202438,
+      "Sha256": "8FDAD7C6A20BB4D0531637F322661B33A5DAF5BD1902E45481C41F2B26015608"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/printerImgDefault.svg",
+      "Size": 3510,
+      "Sha256": "A4672DBF3FE310CE0ABC949D6AE3280D7DB5F5A186F4CAC2FFCE1658B2709BB9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/RFID-dark.svg",
+      "Size": 660,
+      "Sha256": "4F31B34247F8697EF3166D8206C0A1D9E8BBB7456BFDBE5B11981F06DA43881D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/img/RFID-light.svg",
+      "Size": 656,
+      "Sha256": "8567ACE3926F6224CED07B6078C5A656D6349CF3CF9A461570008D02096B664A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/k1max-DyYhpnup.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/live_no_camera-C8IYwt5f.png",
+      "Size": 12714,
+      "Sha256": "B35BC99414801D3066BDB21A8D33C4B961A92DC642FAEA89322150EF5E258CA9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/assets/white_theme-w7wzNwOC.png",
+      "Size": 127555,
+      "Sha256": "E377FEBC29A7BF6CBB0C8BF07C4FD9377DC5ED9B2CDB145B40BA9D567ADB7390"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/CQKv4dak.js",
+      "Size": 6068530,
+      "Sha256": "94BE88BF4E173FC11BEB5775D91DE662FA6C22D65F1F43F0CCCB4F0AEA22413E"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/CReFMIpA.js",
+      "Size": 6168667,
+      "Sha256": "96CF27C546078418BB13DF46808E3C5C91DAF8526FB7416B26F3B1D8CF6455A4"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/filament-DIWyWcvx.png",
+      "Size": 24351,
+      "Sha256": "2CD63B55322CDFA481EEE63832E3F86CCF3D26D87571366C8D9AD2AEF5644301"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/iconfont-B-lUTA3b.woff2",
+      "Size": 9128,
+      "Sha256": "51B30B823095894DE238A4C3C9288923C1596EF516C2408B892AA68D207A0E35"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/iconfont-C8ZDLEAq.ttf",
+      "Size": 16784,
+      "Sha256": "989DE5F223A6F9E28EA5BAD2A947C262E64760E85F6E09A1D51A5E6FE3583598"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/iconfont-CdeFiiLn.woff",
+      "Size": 10552,
+      "Sha256": "8B64D6F618793AC878D043061A115889A30D26925BB65D03E4C935FD2F809FE5"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/1.jpg",
+      "Size": 4667,
+      "Sha256": "D502F1A4A73A4F29041CF5DFB1E7B69DC9B446C0B67C063522EED96F3CC92030"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/addPrinter_Printer.png",
+      "Size": 3921,
+      "Sha256": "0E1E5B392F55151BFF10DDBEDE9472408FAB11FD6D2B724153830981E5587FBC"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/addPrinter_SonicPad.png",
+      "Size": 6535,
+      "Sha256": "FDD44E164671B64820D96C2029DAF87EA4EE8D199DD69DC958C017B4D82BF478"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/default.png",
+      "Size": 2573,
+      "Sha256": "60A5BB1A8B097CAD8033052D881817B32182CA28440EDC83D608F7017F957403"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/file.png",
+      "Size": 5766,
+      "Sha256": "211172D3AA2FB65CD2E67216FD14901A28631BF69D33109D908B805B38B57802"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/humidity-dark.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/humidity-light.svg",
+      "Size": 11831,
+      "Sha256": "68FFB2D3398CC6605A1B81B28CD657FD4206750AE12D863D9D17A084C4200AF9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/humidity.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/k1device.png",
+      "Size": 103364,
+      "Sha256": "8D55323A41807F6354495740EACBF47C994CD9AC03BB8F2764A4DB50175A3777"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/k1max.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Bambu Lab A1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/CP-TP450.png",
+      "Size": 37880,
+      "Sha256": "493F3A6F2A55B294D7216F5438698E56E35074E4977A4D19FFA3DB8228597FBD"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/CR-K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/CR-K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1 Plus.png",
+      "Size": 121800,
+      "Sha256": "22190CA8E06B8B846C2BCC0B923489E4AC008BB163326C7AB415902A5B959108"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1 Pro.png",
+      "Size": 163179,
+      "Sha256": "BC6A840DBD923BE8F2F859FC3693377B05B6B6059F2772445E46D977488B4459"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 S1.png",
+      "Size": 157534,
+      "Sha256": "F1DDFB52E0EBEB9FCC2A6E76077699FD49814BCD28C3603B20AAEFB7784CDB48"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3 V3 SE.png",
+      "Size": 161862,
+      "Sha256": "CD3EA5F1A50CF8E64173C9840B1BC6F42FA1AB22CA528387F562CBB4FD09A9F2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-3.png",
+      "Size": 265230,
+      "Sha256": "3F1D895A73A8F00519315C458BE3563168F9D8AF646691DF10FC8391035E8849"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/Ender-5 S1.png",
+      "Size": 37920,
+      "Sha256": "9686A889C38FCFF1CD23AB3F7C1928848093EA415C3C417A353C77DD8777063C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F001.png",
+      "Size": 206713,
+      "Sha256": "D72D2BC2CC75D48D6D8ADE6624F3213B83F118AD2822E2C50F442D53D6525378"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F002.png",
+      "Size": 330719,
+      "Sha256": "60E11CE1B7E8D7FE7D57CC6146EDCD2234F5C1201A84C040AA0E630D5E2B7815"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F003.png",
+      "Size": 76823,
+      "Sha256": "96FADF51DA907F6295FB6B08B965725AA33DE41879C14FAEF883AA47DA40F36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F004.png",
+      "Size": 275692,
+      "Sha256": "20A0C2FBC097BEE772DEF8F15BE2CE3DC90F2C1EFE48D3611D9B0AC23926E36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F005.png",
+      "Size": 176563,
+      "Sha256": "07D3DD8E1F83465713F8E69E34195C6B27295CB3DBBB0715F7D84BB93CF246A6"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F006.png",
+      "Size": 36550,
+      "Sha256": "0687740FF874A818A4AA9E1B0BA2D65AE541D53E26B7A66BA1A4E3CBD420C76A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F008.png",
+      "Size": 162666,
+      "Sha256": "252A058838E5A9828CEB3B9A33E7024688CA693E1E9E3158FA1FE018CB3CEA3C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/F018.png",
+      "Size": 21596,
+      "Sha256": "26CD5946C4D8E137AAD9EBC9C42822D84F73DFE68AF25CC751FFD2FA5FEFA433"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/K1 SE.png",
+      "Size": 168277,
+      "Sha256": "DED412E3B07D2B7B99420EF7B2D240ED62764A44C9DD58D3A1B367FB44D80142"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/machine/K1C.png",
+      "Size": 202438,
+      "Sha256": "8FDAD7C6A20BB4D0531637F322661B33A5DAF5BD1902E45481C41F2B26015608"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/printerImgDefault.svg",
+      "Size": 3510,
+      "Sha256": "A4672DBF3FE310CE0ABC949D6AE3280D7DB5F5A186F4CAC2FFCE1658B2709BB9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/RFID-dark.svg",
+      "Size": 660,
+      "Sha256": "4F31B34247F8697EF3166D8206C0A1D9E8BBB7456BFDBE5B11981F06DA43881D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/img/RFID-light.svg",
+      "Size": 656,
+      "Sha256": "8567ACE3926F6224CED07B6078C5A656D6349CF3CF9A461570008D02096B664A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/k1max-DyYhpnup.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/live_no_camera-C8IYwt5f.png",
+      "Size": 12714,
+      "Sha256": "B35BC99414801D3066BDB21A8D33C4B961A92DC642FAEA89322150EF5E258CA9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/assets/white_theme-w7wzNwOC.png",
+      "Size": 127555,
+      "Sha256": "E377FEBC29A7BF6CBB0C8BF07C4FD9377DC5ED9B2CDB145B40BA9D567ADB7390"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/1.jpg",
+      "Size": 4667,
+      "Sha256": "D502F1A4A73A4F29041CF5DFB1E7B69DC9B446C0B67C063522EED96F3CC92030"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/addPrinter_Printer.png",
+      "Size": 3921,
+      "Sha256": "0E1E5B392F55151BFF10DDBEDE9472408FAB11FD6D2B724153830981E5587FBC"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/addPrinter_SonicPad.png",
+      "Size": 6535,
+      "Sha256": "FDD44E164671B64820D96C2029DAF87EA4EE8D199DD69DC958C017B4D82BF478"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/app-domestic.png",
+      "Size": 10932,
+      "Sha256": "B1748DD7EF0506F2A1DB4B1394807421E7A3EA2D5BEDF855C2FFA6170B895C9F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/bg_plate_dark.svg",
+      "Size": 38962,
+      "Sha256": "74CFCCED56FA6A82C4DD1B2AA1D97840FA62D30DA9BE94EACB73C3A068EE3D10"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/bg_plate_white.svg",
+      "Size": 40355,
+      "Sha256": "3BA63CBA23DA62B2424D8869EABF956807082FEA3506BE5CA16AEE5CBE881CF2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/blanking.svg",
+      "Size": 2139,
+      "Sha256": "C783E0C533288B4CC3C4954619FB094400ADAF16E983E90F0B3862C40AD604C9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/cx.png",
+      "Size": 642,
+      "Sha256": "1FDB73B3E457B6BD20F5ADA9596598BEC143BE1E34DD3C23E69AB51D60B1835C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/default.png",
+      "Size": 2573,
+      "Sha256": "60A5BB1A8B097CAD8033052D881817B32182CA28440EDC83D608F7017F957403"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/file.png",
+      "Size": 5766,
+      "Sha256": "211172D3AA2FB65CD2E67216FD14901A28631BF69D33109D908B805B38B57802"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/groupEmpty.png",
+      "Size": 7459,
+      "Sha256": "5775A2C94C9A1632A5398F270023DB019632C65D98012999B2C07AA3405878AA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/http.png",
+      "Size": 11079,
+      "Sha256": "8B5586704491D730650292C35047396514DE9414457E47A48E08D7FCEA97D240"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/humidity-dark.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/humidity-light.svg",
+      "Size": 11831,
+      "Sha256": "68FFB2D3398CC6605A1B81B28CD657FD4206750AE12D863D9D17A084C4200AF9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/humidity.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/info_tip.svg",
+      "Size": 1807,
+      "Sha256": "D0CD8830CDEA6D898E61B13EC2F07069E4D2A88B65CCABFFD189F50CDE211DC8"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/ip.png",
+      "Size": 1018,
+      "Sha256": "54C92D2E9E5B31D88A6A17F8BCBFEE5FA3ACEDCD7AD644C9838AF621C545BF35"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/k1device.png",
+      "Size": 103364,
+      "Sha256": "8D55323A41807F6354495740EACBF47C994CD9AC03BB8F2764A4DB50175A3777"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/k1max.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/loading_dark.png",
+      "Size": 2326,
+      "Sha256": "2AC46A7494E18F9A439F23635624A315FA9617A412A8C8FECB7046DF8399ECFE"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/loading_light.png",
+      "Size": 2449,
+      "Sha256": "A863008BB3A38140B0379F6F866158DFA46DFC2BCE72A365769BA7FA62FD862A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/logo.png",
+      "Size": 10934,
+      "Sha256": "5B1330FF9BDC44963E2BD9BA8DE4D07E356F9D91DC90E0F529AD179FFEB360E9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Bambu Lab A1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/CP-TP450.png",
+      "Size": 37880,
+      "Sha256": "493F3A6F2A55B294D7216F5438698E56E35074E4977A4D19FFA3DB8228597FBD"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1 Plus.png",
+      "Size": 121800,
+      "Sha256": "22190CA8E06B8B846C2BCC0B923489E4AC008BB163326C7AB415902A5B959108"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1 Pro.png",
+      "Size": 163179,
+      "Sha256": "BC6A840DBD923BE8F2F859FC3693377B05B6B6059F2772445E46D977488B4459"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 S1.png",
+      "Size": 157534,
+      "Sha256": "F1DDFB52E0EBEB9FCC2A6E76077699FD49814BCD28C3603B20AAEFB7784CDB48"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-3 V3 SE.png",
+      "Size": 161862,
+      "Sha256": "CD3EA5F1A50CF8E64173C9840B1BC6F42FA1AB22CA528387F562CBB4FD09A9F2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-3.png",
+      "Size": 265230,
+      "Sha256": "3F1D895A73A8F00519315C458BE3563168F9D8AF646691DF10FC8391035E8849"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/Ender-5 S1.png",
+      "Size": 37920,
+      "Sha256": "9686A889C38FCFF1CD23AB3F7C1928848093EA415C3C417A353C77DD8777063C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F001.png",
+      "Size": 206713,
+      "Sha256": "D72D2BC2CC75D48D6D8ADE6624F3213B83F118AD2822E2C50F442D53D6525378"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F002.png",
+      "Size": 330719,
+      "Sha256": "60E11CE1B7E8D7FE7D57CC6146EDCD2234F5C1201A84C040AA0E630D5E2B7815"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F003.png",
+      "Size": 76823,
+      "Sha256": "96FADF51DA907F6295FB6B08B965725AA33DE41879C14FAEF883AA47DA40F36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F004.png",
+      "Size": 34194,
+      "Sha256": "48B4D54DE9FAAEB41FD971F26E23424D7A5660DCD097CAF2704816ED58D3764C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F005.png",
+      "Size": 176563,
+      "Sha256": "07D3DD8E1F83465713F8E69E34195C6B27295CB3DBBB0715F7D84BB93CF246A6"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F006.png",
+      "Size": 36550,
+      "Sha256": "0687740FF874A818A4AA9E1B0BA2D65AE541D53E26B7A66BA1A4E3CBD420C76A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F008.png",
+      "Size": 162666,
+      "Sha256": "252A058838E5A9828CEB3B9A33E7024688CA693E1E9E3158FA1FE018CB3CEA3C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/F018.png",
+      "Size": 21596,
+      "Sha256": "26CD5946C4D8E137AAD9EBC9C42822D84F73DFE68AF25CC751FFD2FA5FEFA433"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/K1 SE.png",
+      "Size": 168277,
+      "Sha256": "DED412E3B07D2B7B99420EF7B2D240ED62764A44C9DD58D3A1B367FB44D80142"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/machine/K1C.png",
+      "Size": 202438,
+      "Sha256": "8FDAD7C6A20BB4D0531637F322661B33A5DAF5BD1902E45481C41F2B26015608"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/materialDisableBg.png",
+      "Size": 6583,
+      "Sha256": "CBA2AE6BB58E78094EB0A376AA5EBDBA74FB18AAD2E177005BC9374D9829B538"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/no_net_dark.png",
+      "Size": 5641,
+      "Sha256": "D5A4820762DDB0CDBFBB36522F42960818397E608115CF320614003ACA8C8CD3"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/no_net_light.png",
+      "Size": 4826,
+      "Sha256": "25DE313C9EA86F0A09AF84C126B2DB96CE84EDA8EA0667C825BFDE551FC9222D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/no-color.png",
+      "Size": 2086,
+      "Sha256": "9AA5AC80C18818C42CEB30EC8BB92C821C6B0CB4DBBF963D97667753CFD1D590"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/other.png",
+      "Size": 9019,
+      "Sha256": "5544E4081F786D36DD19BF6312247D579D2F5AE4F8289B0AA7FD93017421289A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/printer1_cfs.png",
+      "Size": 60991,
+      "Sha256": "7B91C3365915141354A3FBE666C2E2A5BA614933CA8E858381C759EE1434B431"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/printer1.png",
+      "Size": 20583,
+      "Sha256": "BBCB1B28717E3B69B2C14C93293BFC2093D18476F133B37BBE60D17C4E53BAB2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/printer2_cfs.png",
+      "Size": 49116,
+      "Sha256": "180E05CC3EE82BB1B7940B93EC0EDCFD2D8FC5395AA3CE544C732136FF2F0E9F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/printer2.png",
+      "Size": 22494,
+      "Sha256": "208BE2396490B9350B1CEBC4DEE8C248A17198959C4CE275F4B1CCB4A9C94B95"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/printerImgDefault.svg",
+      "Size": 3510,
+      "Sha256": "A4672DBF3FE310CE0ABC949D6AE3280D7DB5F5A186F4CAC2FFCE1658B2709BB9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/replay_btn.svg",
+      "Size": 1095,
+      "Sha256": "1F5CD5DAFEAE14A68E1D35C281D7286B62BCD38180548BCA80F3BF4DC253946B"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/RFID-dark.svg",
+      "Size": 660,
+      "Sha256": "4F31B34247F8697EF3166D8206C0A1D9E8BBB7456BFDBE5B11981F06DA43881D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/RFID-light.svg",
+      "Size": 656,
+      "Sha256": "8567ACE3926F6224CED07B6078C5A656D6349CF3CF9A461570008D02096B664A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/img/warning.png",
+      "Size": 698,
+      "Sha256": "33233B559C0F504F6C417DF16CB4EAF18AD10908C9D5BDA833D2D88C7AF2ECAE"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/deviceMgr/index.html",
+      "Size": 883,
+      "Sha256": "E8394B17D33D757CFAB17790F19FED7CFA9C8AD5985F41425DE8577F6E0BE379"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/1.jpg",
+      "Size": 4667,
+      "Sha256": "D502F1A4A73A4F29041CF5DFB1E7B69DC9B446C0B67C063522EED96F3CC92030"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/addPrinter_Printer.png",
+      "Size": 3921,
+      "Sha256": "0E1E5B392F55151BFF10DDBEDE9472408FAB11FD6D2B724153830981E5587FBC"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/addPrinter_SonicPad.png",
+      "Size": 6535,
+      "Sha256": "FDD44E164671B64820D96C2029DAF87EA4EE8D199DD69DC958C017B4D82BF478"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/app-domestic.png",
+      "Size": 10932,
+      "Sha256": "B1748DD7EF0506F2A1DB4B1394807421E7A3EA2D5BEDF855C2FFA6170B895C9F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/bg_plate_dark.svg",
+      "Size": 38962,
+      "Sha256": "74CFCCED56FA6A82C4DD1B2AA1D97840FA62D30DA9BE94EACB73C3A068EE3D10"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/bg_plate_white.svg",
+      "Size": 40355,
+      "Sha256": "3BA63CBA23DA62B2424D8869EABF956807082FEA3506BE5CA16AEE5CBE881CF2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/blanking.svg",
+      "Size": 2139,
+      "Sha256": "C783E0C533288B4CC3C4954619FB094400ADAF16E983E90F0B3862C40AD604C9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/cx.png",
+      "Size": 642,
+      "Sha256": "1FDB73B3E457B6BD20F5ADA9596598BEC143BE1E34DD3C23E69AB51D60B1835C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/default.png",
+      "Size": 2573,
+      "Sha256": "60A5BB1A8B097CAD8033052D881817B32182CA28440EDC83D608F7017F957403"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/file.png",
+      "Size": 5766,
+      "Sha256": "211172D3AA2FB65CD2E67216FD14901A28631BF69D33109D908B805B38B57802"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/groupEmpty.png",
+      "Size": 7459,
+      "Sha256": "5775A2C94C9A1632A5398F270023DB019632C65D98012999B2C07AA3405878AA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/http.png",
+      "Size": 11079,
+      "Sha256": "8B5586704491D730650292C35047396514DE9414457E47A48E08D7FCEA97D240"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/humidity-dark.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/humidity-light.svg",
+      "Size": 11831,
+      "Sha256": "68FFB2D3398CC6605A1B81B28CD657FD4206750AE12D863D9D17A084C4200AF9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/humidity.svg",
+      "Size": 11849,
+      "Sha256": "0CA5B903CA48F063DB19D1B18CCCC64288B5C707FF32078396CE2E6E83EF0DDA"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/info_tip.svg",
+      "Size": 1807,
+      "Sha256": "D0CD8830CDEA6D898E61B13EC2F07069E4D2A88B65CCABFFD189F50CDE211DC8"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/ip.png",
+      "Size": 1018,
+      "Sha256": "54C92D2E9E5B31D88A6A17F8BCBFEE5FA3ACEDCD7AD644C9838AF621C545BF35"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/k1device.png",
+      "Size": 103364,
+      "Sha256": "8D55323A41807F6354495740EACBF47C994CD9AC03BB8F2764A4DB50175A3777"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/k1max.jpg",
+      "Size": 185387,
+      "Sha256": "9729A74C7D908216FEDFEA1E07BA8DFE2DBC37FE075B9EE1E3FFDC5BB01C03B9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/loading_dark.png",
+      "Size": 2326,
+      "Sha256": "2AC46A7494E18F9A439F23635624A315FA9617A412A8C8FECB7046DF8399ECFE"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/loading_light.png",
+      "Size": 2449,
+      "Sha256": "A863008BB3A38140B0379F6F866158DFA46DFC2BCE72A365769BA7FA62FD862A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/logo.png",
+      "Size": 10934,
+      "Sha256": "5B1330FF9BDC44963E2BD9BA8DE4D07E356F9D91DC90E0F529AD179FFEB360E9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Bambu Lab A1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/CP-TP450.png",
+      "Size": 37880,
+      "Sha256": "493F3A6F2A55B294D7216F5438698E56E35074E4977A4D19FFA3DB8228597FBD"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-3 S1 Plus.png",
+      "Size": 121800,
+      "Sha256": "22190CA8E06B8B846C2BCC0B923489E4AC008BB163326C7AB415902A5B959108"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-3 S1 Pro.png",
+      "Size": 163179,
+      "Sha256": "BC6A840DBD923BE8F2F859FC3693377B05B6B6059F2772445E46D977488B4459"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-3 S1.png",
+      "Size": 157534,
+      "Sha256": "F1DDFB52E0EBEB9FCC2A6E76077699FD49814BCD28C3603B20AAEFB7784CDB48"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-3 V3 SE.png",
+      "Size": 161862,
+      "Sha256": "CD3EA5F1A50CF8E64173C9840B1BC6F42FA1AB22CA528387F562CBB4FD09A9F2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-3.png",
+      "Size": 265230,
+      "Sha256": "3F1D895A73A8F00519315C458BE3563168F9D8AF646691DF10FC8391035E8849"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/Ender-5 S1.png",
+      "Size": 37920,
+      "Sha256": "9686A889C38FCFF1CD23AB3F7C1928848093EA415C3C417A353C77DD8777063C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F001.png",
+      "Size": 206713,
+      "Sha256": "D72D2BC2CC75D48D6D8ADE6624F3213B83F118AD2822E2C50F442D53D6525378"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F002.png",
+      "Size": 330719,
+      "Sha256": "60E11CE1B7E8D7FE7D57CC6146EDCD2234F5C1201A84C040AA0E630D5E2B7815"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F003.png",
+      "Size": 76823,
+      "Sha256": "96FADF51DA907F6295FB6B08B965725AA33DE41879C14FAEF883AA47DA40F36F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F004.png",
+      "Size": 34194,
+      "Sha256": "48B4D54DE9FAAEB41FD971F26E23424D7A5660DCD097CAF2704816ED58D3764C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F005.png",
+      "Size": 176563,
+      "Sha256": "07D3DD8E1F83465713F8E69E34195C6B27295CB3DBBB0715F7D84BB93CF246A6"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F006.png",
+      "Size": 36550,
+      "Sha256": "0687740FF874A818A4AA9E1B0BA2D65AE541D53E26B7A66BA1A4E3CBD420C76A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F008.png",
+      "Size": 162666,
+      "Sha256": "252A058838E5A9828CEB3B9A33E7024688CA693E1E9E3158FA1FE018CB3CEA3C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/F018.png",
+      "Size": 21596,
+      "Sha256": "26CD5946C4D8E137AAD9EBC9C42822D84F73DFE68AF25CC751FFD2FA5FEFA433"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/K1 Max.png",
+      "Size": 206771,
+      "Sha256": "4CF8857266D5B314BFE8BEDA367788043FB7BD7A03F51FDECE611B40A78E6F0C"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/K1 SE.png",
+      "Size": 168277,
+      "Sha256": "DED412E3B07D2B7B99420EF7B2D240ED62764A44C9DD58D3A1B367FB44D80142"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/K1.png",
+      "Size": 159265,
+      "Sha256": "69898C733F8A3A1C8B4410037074686C3DAD6AB50076BFE011EE273549EF6722"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/machine/K1C.png",
+      "Size": 202438,
+      "Sha256": "8FDAD7C6A20BB4D0531637F322661B33A5DAF5BD1902E45481C41F2B26015608"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/materialDisableBg.png",
+      "Size": 6583,
+      "Sha256": "CBA2AE6BB58E78094EB0A376AA5EBDBA74FB18AAD2E177005BC9374D9829B538"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/no_net_dark.png",
+      "Size": 5641,
+      "Sha256": "D5A4820762DDB0CDBFBB36522F42960818397E608115CF320614003ACA8C8CD3"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/no_net_light.png",
+      "Size": 4826,
+      "Sha256": "25DE313C9EA86F0A09AF84C126B2DB96CE84EDA8EA0667C825BFDE551FC9222D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/no-color.png",
+      "Size": 2086,
+      "Sha256": "9AA5AC80C18818C42CEB30EC8BB92C821C6B0CB4DBBF963D97667753CFD1D590"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/other.png",
+      "Size": 9019,
+      "Sha256": "5544E4081F786D36DD19BF6312247D579D2F5AE4F8289B0AA7FD93017421289A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/printer1_cfs.png",
+      "Size": 60991,
+      "Sha256": "7B91C3365915141354A3FBE666C2E2A5BA614933CA8E858381C759EE1434B431"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/printer1.png",
+      "Size": 20583,
+      "Sha256": "BBCB1B28717E3B69B2C14C93293BFC2093D18476F133B37BBE60D17C4E53BAB2"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/printer2_cfs.png",
+      "Size": 49116,
+      "Sha256": "180E05CC3EE82BB1B7940B93EC0EDCFD2D8FC5395AA3CE544C732136FF2F0E9F"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/printer2.png",
+      "Size": 22494,
+      "Sha256": "208BE2396490B9350B1CEBC4DEE8C248A17198959C4CE275F4B1CCB4A9C94B95"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/printerImgDefault.svg",
+      "Size": 3510,
+      "Sha256": "A4672DBF3FE310CE0ABC949D6AE3280D7DB5F5A186F4CAC2FFCE1658B2709BB9"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/replay_btn.svg",
+      "Size": 1095,
+      "Sha256": "1F5CD5DAFEAE14A68E1D35C281D7286B62BCD38180548BCA80F3BF4DC253946B"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/RFID-dark.svg",
+      "Size": 660,
+      "Sha256": "4F31B34247F8697EF3166D8206C0A1D9E8BBB7456BFDBE5B11981F06DA43881D"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/RFID-light.svg",
+      "Size": 656,
+      "Sha256": "8567ACE3926F6224CED07B6078C5A656D6349CF3CF9A461570008D02096B664A"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/img/warning.png",
+      "Size": 698,
+      "Sha256": "33233B559C0F504F6C417DF16CB4EAF18AD10908C9D5BDA833D2D88C7AF2ECAE"
+    },
+    {
+      "RelativePath": "resources/web/deviceMgr/index.html",
+      "Size": 883,
+      "Sha256": "E8394B17D33D757CFAB17790F19FED7CFA9C8AD5985F41425DE8577F6E0BE379"
+    }
+  ]
+}

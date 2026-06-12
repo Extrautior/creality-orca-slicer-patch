@@ -1,25 +1,38 @@
 # Release Notes
 
-## v2.3.2-creality-cfs-20260516
+## v2.4.0-beta-creality-cfs-r1-20260612
 
-Final OrcaSlicer 2.3.2 stable patch package.
+First Creality Hi / CFS patch for OrcaSlicer 2.4.0-beta.
 
-### Fixed
+### Added
 
-- Creality device page opens inside OrcaSlicer instead of the Klipper/Fluidd page.
-- Device page jumps to the configured current printer.
-- Camera/WebRTC offer handling matches the bundled Creality device page.
-- Camera watchdog reloads the local device page if the embedded WebView gets stuck on loading.
-- Device page file export bridge works through the Orca WebView message bridge.
-- Device page includes a separate `Logo LED` toggle for the Creality Hi logo light.
-- CFS sync button and CFS filament mapping dialog are present.
-- Upload dialog includes the Creality CFS mapping and calibration option path.
-- G-code emits `flush_volumes_changed = 1` before `flush_volumes_matrix`.
-- Creality flush multiplier changes are baked into the matrix while generated multiplier stays `1`.
-- Installer progress bar reaches 100 percent when installation completes.
+- Port of the working 2.3.2 Creality device page and CFS workflow.
+- Compatibility with OrcaSlicer's new 2.4 printer web-handler implementation.
+- Creality Hi/CFS mapping, sync, material edit, feed, and retract support.
+- External spool-holder selection.
+- Camera/WebRTC, local-file export, and logo-light bridges.
+- Creality layer/time and flush metadata.
+- Corrected 0.4 mm and 0.6 mm Hi profiles.
 
-### Known Scope
+### Installer Safety
 
-- Built for OrcaSlicer 2.3.2 stable on Windows x64.
-- Not a full OrcaSlicer fork.
-- Not tested against OrcaSlicer 2.4 development builds.
+- Exact clean-beta executable and DLL verification.
+- SHA-256 verification of all 207 payload files.
+- Transactional backup and post-install verification.
+- Byte-for-byte rollback.
+- Stale 2.3.2 marker handling.
+- Unsupported-build rejection.
+- Rollback protection after an OrcaSlicer update.
+
+### Validation
+
+- Full Windows Release build succeeded.
+- Source patch applies cleanly to the upstream beta tag.
+- Patched OrcaSlicer launched and remained responsive.
+- Install and rollback were tested against a disposable copy.
+
+Physical printer/CFS printing was not performed as part of the automated validation.
+
+## Previous Release
+
+The OrcaSlicer 2.3.2 stable patch remains available in the earlier tagged releases and in `patches/creality-orca-2.3.2.patch`.

@@ -1,65 +1,67 @@
-# Creality OrcaSlicer 2.3.2 Patch
+# Creality Hi / CFS Patch for OrcaSlicer
 
-This repository packages the Creality Hi / CFS support patch for the stable OrcaSlicer 2.3.2 Windows install.
+This repository packages an unofficial Windows compatibility patch that adds the Creality Hi, CFS, and Creality device-page workflow to OrcaSlicer.
 
-It is meant to patch a normal OrcaSlicer install in place.
+## Current Release
 
-## What This Adds
+- Target: OrcaSlicer `2.4.0-beta` Windows x64
+- Exact upstream commit: `fc9a8aa93f7d341c3028d275781d77d2f385023e`
+- Patch revision: `creality-cfs-orca-2.4.0-beta-r1-20260612`
 
-- Creality Print style Device page inside OrcaSlicer.
-- Direct jump to the current Creality printer when one printer is configured.
-- Creality CFS filament sync and CFS-aware upload dialog.
-- Creality CFS filament mapping during print upload.
-- External spool holder selection in the Creality send/upload dialog.
-- Preview `Flushed` estimate column for CFS/color changes calculated from the flush matrix.
-- Camera/WebRTC bridge fixes for the embedded Creality device page.
-- Local file export bridge for the device page.
-- Creality Hi logo LED toggle on the Device page.
-- Creality Hi startup G-code fix so the bed target is set before `START_PRINT`.
-- Windows maximize bounds fix so the borderless window fills the working area without clipping the top or left UI.
-- CFS flush volume compatibility:
-  - emits `flush_volumes_changed = 1`;
-  - bakes Creality flush multiplier changes into `flush_volumes_matrix`;
-  - keeps generated Creality G-code multiplier at `1`.
+Download the installer from the latest GitHub release:
 
-## Download
+`Creality-OrcaSlicer-2.4.0-beta-Patch-Installer.exe`
 
-Use the installer from the latest GitHub release:
+The installer validates the real OrcaSlicer executable and DLL hashes. It will not patch another beta, a development build, or a partially modified installation.
 
-`Creality-OrcaSlicer-2.3.2-Patch-Installer-20260519-114649.exe`
+## Features
 
-The checksum is stored in `release/SHA256SUMS.txt`.
+- Creality device page inside OrcaSlicer.
+- Creality Hi and CFS discovery, mapping, sync, edit, feed, and retract support.
+- External spool-holder selection.
+- Creality camera/WebRTC bridge and camera recovery.
+- Local-file export and logo-light controls.
+- Creality print metadata, layer/time markers, and flush-matrix handling.
+- Corrected Creality Hi 0.4 mm and 0.6 mm profiles.
+- Compatibility with OrcaSlicer 2.4's printer web-handler architecture.
 
 ## Install
 
-1. Install OrcaSlicer 2.3.2 stable normally.
+1. Install the official OrcaSlicer `2.4.0-beta` build.
 2. Close OrcaSlicer.
-3. Run the patch installer as administrator.
-4. Point it at the OrcaSlicer install directory, usually:
+3. Run the patch installer.
+4. Confirm the OrcaSlicer folder, normally `C:\Program Files\OrcaSlicer`.
+5. Select **Install / Verify**.
+
+The installer creates a rollback backup under:
 
 ```text
-C:\Program Files\OrcaSlicer
+%LOCALAPPDATA%\CrealityOrcaPatcher\Backups\2.4.0-beta
 ```
 
-5. Click `Install Patch`.
+Run the same installer and select **Restore Backup** to undo the patch.
 
-The installer backs up overwritten files under:
+## Safety
 
-```text
-%LOCALAPPDATA%\CrealityOrcaPatcher\Backups
-```
+- Embedded payload files are SHA-256 verified before installation.
+- Core OrcaSlicer binaries must match the supported clean beta.
+- Every overwritten file is backed up.
+- Copies are written and verified before replacing their targets.
+- The completed installation is verified against the payload manifest.
+- Rollback restores files byte-for-byte and removes newly introduced files.
+- Rollback refuses to overwrite an OrcaSlicer build changed after patching.
+- A stale marker from the older 2.3.2 patch is ignored for version detection.
 
 ## Repository Layout
 
-- `patches/creality-orca-2.3.2.patch` - source patch against OrcaSlicer 2.3.2.
-- `installer/` - WinForms wrapper source for the single-file installer.
-- `docs/BUILD_AND_UPDATE.md` - how to rebuild or update this for a newer OrcaSlicer.
-- `docs/PATCH_SUMMARY.md` - overview of the important code areas.
-- `docs/payload-manifest.txt` - payload files overlaid into OrcaSlicer.
-- `release/` - SHA256 checksum for the release installer.
+- `patches/creality-orca-2.4.0-beta.patch` - current source patch.
+- `patches/creality-orca-2.3.2.patch` - previous stable patch.
+- `installer/` - .NET 8 WinForms installer and transactional patch engine.
+- `docs/BUILD_AND_UPDATE.md` - build and packaging guide.
+- `docs/PATCH_SUMMARY.md` - implementation overview.
+- `docs/payload-manifest-2.4.0-beta.json` - release payload hashes.
+- `release/` - release notes and checksums.
 
-## Notes
+## Scope
 
-This is an unofficial compatibility patch. It is focused on the Creality Hi and CFS workflow that was missing from stock OrcaSlicer.
-
-Existing custom printer profiles may keep their old Machine start G-code. If a custom Creality Hi profile still starts with `M140 S0`, change that first line to `M140 S[bed_temperature_initial_layer_single]` and save the custom profile.
+The patch does not modify printer firmware or files stored on the printer. It is not code-signed, so Windows SmartScreen may show an unknown-publisher warning.

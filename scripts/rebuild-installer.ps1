@@ -1,35 +1,36 @@
 param(
-    [string]$OrcaBuildRoot = ".",
-    [string]$Configuration = "Release"
+    [Parameter(Mandatory = $true)]
+    [string]$PayloadDirectory,
+    [string]$OutputDirectory = "build\installer-publish"
 )
 
 $ErrorActionPreference = "Stop"
 
-$root = Resolve-Path $OrcaBuildRoot
-$payloadRoot = Join-Path $root "build\creality-orca-patcher-2.3.2-stable-release\payload\root"
-$wrapperRoot = Join-Path $root "build\creality-orca-installer-wrapper-src"
-$zipPath = Join-Path $root "build\creality-orca-patcher-2.3.2-stable-release.zip"
-$publishDir = Join-Path $root "build\creality-orca-installer-2.3.2-stable-release"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$payloadDirectory = (Resolve-Path $PayloadDirectory).Path
+$manifestPath = Join-Path $payloadDirectory "manifest.json"
+$payloadRoot = Join-Path $payloadDirectory "root"
 
-Copy-Item (Join-Path $root "build\src\$Configuration\OrcaSlicer.dll") (Join-Path $payloadRoot "OrcaSlicer.dll") -Force
-Copy-Item (Join-Path $root "build\src\$Configuration\orca-slicer.exe") (Join-Path $payloadRoot "orca-slicer.exe") -Force
-
-if (Test-Path $zipPath) {
-    Remove-Item $zipPath -Force
+if (-not (Test-Path $manifestPath -PathType Leaf) -or
+    -not (Test-Path $payloadRoot -PathType Container)) {
+    throw "PayloadDirectory must contain manifest.json and root\."
 }
 
-Compress-Archive -Path (Join-Path $root "build\creality-orca-patcher-2.3.2-stable-release\*") -DestinationPath $zipPath -CompressionLevel Optimal
-Copy-Item $zipPath (Join-Path $wrapperRoot "creality-orca-patcher-2.3.2-stable-release.zip") -Force
+$embeddedZip = Join-Path $repoRoot "installer\payload.zip"
+if (Test-Path $embeddedZip) {
+    Remove-Item $embeddedZip -Force
+}
 
-dotnet publish (Join-Path $wrapperRoot "CrealityOrcaPatchInstaller.csproj") `
-    -c Release `
-    -r win-x64 `
-    --self-contained true `
-    -p:PublishSingleFile=true `
-    -p:IncludeNativeLibrariesForSelfExtract=true `
-    -o $publishDir
+Compress-Archive -Path $payloadDirectory -DestinationPath $embeddedZip -CompressionLevel Optimal
 
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$outFile = Join-Path $root "build\Creality-OrcaSlicer-2.3.2-Patch-Installer-$stamp.exe"
-Copy-Item (Join-Path $publishDir "CrealityOrcaPatchInstaller.exe") $outFile -Force
-Get-FileHash $outFile -Algorithm SHA256
+try {
+    dotnet publish (Join-Path $repoRoot "installer\CrealityOrcaPatchInstaller.csproj") `
+        -c Release `
+        -r win-x64 `
+        --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -o (Join-Path $repoRoot $OutputDirectory)
+} finally {
+    Remove-Item $embeddedZip -Force -ErrorAction SilentlyContinue
+}

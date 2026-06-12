@@ -9,11 +9,15 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <AssemblyName>CrealityOrcaPatchInstaller</AssemblyName>
+    <AssemblyName>Creality-OrcaSlicer-2.4.0-beta-Patch-Installer</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>2.4.0.1</Version>
+    <FileVersion>2.4.0.1</FileVersion>
+    <AssemblyVersion>2.4.0.1</AssemblyVersion>
+    <Product>Creality OrcaSlicer 2.4.0-beta Patch Installer</Product>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="creality-orca-patcher-2.3.2-stable-release.zip" />
+    <EmbeddedResource Include="payload.zip" />
   </ItemGroup>
 </Project>

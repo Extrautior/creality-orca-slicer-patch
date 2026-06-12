@@ -5,3 +5,5 @@ obj/
 *.log
 *.tmp
 release/*.exe
+release/*.zip
+installer/payload.zip

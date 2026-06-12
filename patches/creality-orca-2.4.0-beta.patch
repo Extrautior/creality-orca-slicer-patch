@@ -1,0 +1,3971 @@
+From f66caeb0b8902652968ffc4afed4a754802d88d8 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local>
+Date: Fri, 12 Jun 2026 11:32:20 +0300
+Subject: [PATCH] Port Creality Hi/CFS patch to OrcaSlicer 2.4.0-beta
+
+---
+ CREALITY_HI_CFS_PATCH.md                      |   65 +
+ .../machine/Creality Hi 0.4 nozzle.json       |   10 +-
+ .../machine/Creality Hi 0.6 nozzle.json       |   10 +-
+ src/CMakeLists.txt                            |    9 +
+ src/OrcaSlicer.cpp                            |    1 +
+ src/libslic3r/GCode.cpp                       |   52 +-
+ src/libslic3r/GCode/GCodeProcessor.cpp        |   31 +-
+ src/libslic3r/GCode/GCodeProcessor.hpp        |    1 +
+ src/libslic3r/Print.cpp                       |    4 +-
+ src/libslic3r/PrintConfig.cpp                 |   43 +
+ src/libslic3r/PrintConfig.hpp                 |    6 +
+ src/slic3r/GUI/GCodeViewer.cpp                |   73 +-
+ src/slic3r/GUI/GUI_ObjectList.cpp             |   38 +-
+ src/slic3r/GUI/ObjectDataViewModel.cpp        |    8 +-
+ src/slic3r/GUI/Plater.cpp                     |  296 +++-
+ src/slic3r/GUI/Plater.hpp                     |    6 +-
+ src/slic3r/GUI/PrintHostDialogs.cpp           |  178 ++-
+ src/slic3r/GUI/PrintHostDialogs.hpp           |   31 +-
+ src/slic3r/GUI/PrinterWebView.cpp             | 1340 ++++++++++++++---
+ src/slic3r/GUI/PrinterWebView.hpp             |   62 +-
+ src/slic3r/GUI/Widgets/SpinInput.cpp          |    7 +-
+ src/slic3r/GUI/Widgets/TextInput.cpp          |    7 +-
+ src/slic3r/GUI/WipeTowerDialog.cpp            |   32 +
+ src/slic3r/Utils/CrealityPrint.cpp            |  574 ++++++-
+ src/slic3r/Utils/CrealityPrint.hpp            |   34 +-
+ 25 files changed, 2505 insertions(+), 413 deletions(-)
+ create mode 100644 CREALITY_HI_CFS_PATCH.md
+
+diff --git a/CREALITY_HI_CFS_PATCH.md b/CREALITY_HI_CFS_PATCH.md
+new file mode 100644
+index 0000000000..26a12b0009
+--- /dev/null
++++ b/CREALITY_HI_CFS_PATCH.md
+@@ -0,0 +1,65 @@
++# Creality Hi CFS OrcaSlicer 2.4.0-beta Patch
++
++This branch is based on OrcaSlicer 2.4.0-beta (`fc9a8aa9`) and ports the Creality Hi / CFS support that was tested against the local Creality Hi-3/4C printer flow.
++
++## What This Patch Adds
++
++- Creality Print style Device page inside OrcaSlicer for Creality printers.
++- CFS filament mapping support in the print/upload dialog.
++- CFS sync and printer metadata handling for Creality Hi printers.
++- Native bridge for Device page local-file export/download.
++- Camera URL handling for the Creality WebRTC endpoint.
++- Creality-compatible G-code metadata for printer-side layer and time display:
++  - `;:<layer_z>` layer markers for Creality hosts.
++  - fallback `;AFTER_LAYER_CHANGE` markers when the profile field is empty.
++  - `;TIME_ELAPSED:` comments in generated G-code.
++- Creality flush-volume behavior:
++  - flush volumes are calculated using the selected multiplier.
++  - generated config keeps `flush_multiplier = 1` for Creality hosts while emitting updated `flush_volumes_matrix`.
++
++## Recommended Profile Notes
++
++For Creality Hi printers, use the Creality Print style machine start G-code in the printer profile. This avoids the extra hot wait and heavy purge that caused ooze near the cutter/poop area in the Orca profile.
++
++```gcode
++M140 S0
++M104 S0
++START_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]
++T[initial_no_support_extruder]
++M104 S[nozzle_temperature_initial_layer]
++M204 S2000
++G1 Z3 F600
++M83
++G1 Y150 F12000
++G1 X0 F12000
++G1 Z0.2 F600
++G1 X0 Y150 F6000
++G1 E0.8 F300
++G1 X0 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}
++G1 X150 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}
++G92 E0
++G1 Z1 F600
++```
++
++Layer-change G-code can remain empty in the profile because the patch adds the Creality-compatible fallback for Creality print hosts.
++
++## Updating For A New OrcaSlicer Release
++
++When OrcaSlicer updates, rebase or cherry-pick this branch onto the new stable version, then check these areas first:
++
++- `src/slic3r/GUI/PrinterWebView.*`
++- `src/slic3r/Utils/CrealityPrint.*`
++- `src/slic3r/GUI/Plater.*`
++- `src/slic3r/GUI/PrintHostDialogs.*`
++- `src/libslic3r/GCode.cpp`
++- `src/libslic3r/GCode/GCodeProcessor.*`
++- `src/libslic3r/Print.cpp`
++
++After rebuilding, verify:
++
++- Device page opens directly to the single detected printer.
++- Camera loads and can recover after a refresh.
++- Local Files export opens the Windows save dialog and downloads the selected file.
++- Print dialog still shows CFS mapping and the jump-to-device option.
++- Color/filament selector in the object list changes color reliably.
++- Newly sliced Creality-host G-code includes `flush_volumes_changed`, updated `flush_volumes_matrix`, `;TIME_ELAPSED:`, and Creality layer markers.
+diff --git a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json
+index 3de164add1..f83e5d4aed 100644
+--- a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	
++++ b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	
+@@ -132,12 +132,13 @@
+ 	],
+ 	"single_extruder_multi_material": "1",
+ 	"machine_load_filament_time": "105",
++	"prime_volume": "2",
+ 	"machine_pause_gcode": "PAUSE",
+ 	"change_filament_gcode": "G2 Z{z_after_toolchange + 0.4} I0.86 J0.86 P1 F10000 ; spiral lift a little from second lift\nG1 X260 Y180 F30000\nG1 Z{z_after_toolchange} F600",
+ 	"default_filament_profile": [
+ 		"Creality Generic PLA @Hi-all"
+ 	],
+-	"machine_start_gcode": "M140 S0\nM104 S0 \nSTART_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]\nT[initial_no_support_extruder]\nM104 S[nozzle_temperature_initial_layer]\nM204 S2000\nG1 Z3 F600\nM83\nG1 Y150 F12000\nG1 X0 F12000\nG1 Z0.2 F600\nG1 X0 Y150 F6000\nG1 E0.8 F300\nG1 X0 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG1 X150 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG92 E0\nG1 Z1 F600",
++	"machine_start_gcode": "M140 S[bed_temperature_initial_layer_single]\nM104 S0 \nSTART_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]\nT[initial_no_support_extruder]\nM104 S[nozzle_temperature_initial_layer]\nM204 S2000\nG1 Z3 F600\nM83\nG1 Y150 F12000\nG1 X0 F12000\nG1 Z0.2 F600\nG1 X0 Y150 F6000\nG1 E0.8 F300\nG1 X0 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG1 X150 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG92 E0\nG1 Z1 F600",
+ 	"machine_end_gcode": "G1 X0 Y180 F8000\nEND_PRINT",
+ 	"scan_first_layer": "0",
+ 	"thumbnails": [
+@@ -154,6 +155,11 @@
+ 	"cooling_tube_length": "0",
+ 	"cooling_tube_retraction": "0",
+ 	"creality_flush_time": "105",
++	"default_flush_multiplier": "1.3",
++	"flush_box_first_clean_length": "90",
++	"flush_box_need_clean_length": "70",
++	"flush_box_need_clean_length_max": "100",
++	"multicolor_method": "1",
+ 	"disable_m73": "0",
+ 	"emit_machine_limits_to_gcode": "1",
+ 	"extra_loading_move": "0",
+@@ -173,8 +179,6 @@
+ 	"parking_pos_retraction": "0",
+ 	"preferred_orientation": "0",
+ 	"prime_tower_position_type": "Left Upper",
+-	"print_host": "http://172.23.209.71:4408/",
+-	"print_host_webui": "http://172.23.209.71:4408/",
+ 	"printer_technology": "FFF",
+ 	"printhost_authorization_type": "key",
+ 	"printhost_ssl_ignore_revoke": "0",
+diff --git a/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json
+index a14bb76e0b..2fbd5132da 100644
+--- a/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json	
++++ b/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json	
+@@ -132,12 +132,13 @@
+ 	],
+ 	"single_extruder_multi_material": "1",
+ 	"machine_load_filament_time": "105",
++	"prime_volume": "2",
+ 	"machine_pause_gcode": "PAUSE",
+ 	"change_filament_gcode": "G2 Z{z_after_toolchange + 0.4} I0.86 J0.86 P1 F10000 ; spiral lift a little from second lift\nG1 X260 Y180 F30000\nG1 Z{z_after_toolchange} F600",
+ 	"default_filament_profile": [
+ 		"Creality Generic PLA @Hi-all"
+ 	],
+-	"machine_start_gcode": "M140 S0\nM104 S0 \nSTART_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]\nT[initial_no_support_extruder]\nM104 S[nozzle_temperature_initial_layer]\nM204 S2000\nG1 Z3 F600\nM83\nG1 Y150 F12000\nG1 X0 F12000\nG1 Z0.2 F600\nG1 X0 Y150 F6000\nG1 E0.8 F300\nG1 X0 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG1 X150 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG92 E0\nG1 Z1 F600",
++	"machine_start_gcode": "M140 S[bed_temperature_initial_layer_single]\nM104 S0 \nSTART_PRINT EXTRUDER_TEMP=[nozzle_temperature_initial_layer] BED_TEMP=[bed_temperature_initial_layer_single]\nT[initial_no_support_extruder]\nM104 S[nozzle_temperature_initial_layer]\nM204 S2000\nG1 Z3 F600\nM83\nG1 Y150 F12000\nG1 X0 F12000\nG1 Z0.2 F600\nG1 X0 Y150 F6000\nG1 E0.8 F300\nG1 X0 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG1 X150 Y0 E9 F{filament_max_volumetric_speed[initial_extruder]/0.3*60}\nG92 E0\nG1 Z1 F600",
+ 	"machine_end_gcode": "G1 X0 Y180 F8000\nEND_PRINT",
+ 	"scan_first_layer": "0",
+ 	"thumbnails": [
+@@ -154,6 +155,11 @@
+ 	"cooling_tube_length": "0",
+ 	"cooling_tube_retraction": "0",
+ 	"creality_flush_time": "105",
++	"default_flush_multiplier": "1.3",
++	"flush_box_first_clean_length": "90",
++	"flush_box_need_clean_length": "70",
++	"flush_box_need_clean_length_max": "100",
++	"multicolor_method": "1",
+ 	"disable_m73": "0",
+ 	"emit_machine_limits_to_gcode": "1",
+ 	"extra_loading_move": "0",
+@@ -173,8 +179,6 @@
+ 	"parking_pos_retraction": "0",
+ 	"preferred_orientation": "0",
+ 	"prime_tower_position_type": "Left Upper",
+-	"print_host": "http://172.23.209.71:4408/",
+-	"print_host_webui": "http://172.23.209.71:4408/",
+ 	"printer_technology": "FFF",
+ 	"printhost_authorization_type": "key",
+ 	"printhost_ssl_ignore_revoke": "0",
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 73c767dad2..2d6b456fde 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -75,6 +75,15 @@ if (SLIC3R_GUI)
+         list(FILTER wxWidgets_LIBRARIES EXCLUDE REGEX expat)
+         list(APPEND wxWidgets_LIBRARIES ${EXPAT_LIBRARIES})
+     endif ()
++
++    if (WIN32)
++        foreach(WX_EXTRA_LIB wxwebp wxwebpdemux wxsharpyuv)
++            find_library(${WX_EXTRA_LIB}_LIBRARY NAMES ${WX_EXTRA_LIB} PATHS "${wxWidgets_LIB_DIR}" NO_DEFAULT_PATH)
++            if(${WX_EXTRA_LIB}_LIBRARY)
++                list(APPEND wxWidgets_LIBRARIES ${${WX_EXTRA_LIB}_LIBRARY})
++            endif()
++        endforeach()
++    endif()
+     
+     # This is an issue in the new wxWidgets cmake build, doesn't deal with librt
+     find_library(LIBRT rt)
+diff --git a/src/OrcaSlicer.cpp b/src/OrcaSlicer.cpp
+index 72b6775e55..6dd23a5f29 100644
+--- a/src/OrcaSlicer.cpp
++++ b/src/OrcaSlicer.cpp
+@@ -5,6 +5,7 @@
+     #define WIN32_LEAN_AND_MEAN
+     #define NOMINMAX
+     #include <Windows.h>
++    #include <CommCtrl.h>
+     #include <wchar.h>
+     #include <commctrl.h>
+     #ifdef SLIC3R_GUI
+diff --git a/src/libslic3r/GCode.cpp b/src/libslic3r/GCode.cpp
+index 54b4d4bcff..d11aef5759 100644
+--- a/src/libslic3r/GCode.cpp
++++ b/src/libslic3r/GCode.cpp
+@@ -2043,6 +2043,11 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
+     BOOST_LOG_TRIVIAL(info) << boost::format("Will export G-code to %1% soon")%path;
+ 
+     GCodeProcessor::s_IsBBLPrinter = print->is_BBL_printer();
++    {
++        DynamicPrintConfig cfg = print->full_print_config();
++        const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
++        GCodeProcessor::s_IsCrealityPrintHost = host_type_opt && host_type_opt->value == htCrealityPrint;
++    }
+     m_writer.set_is_bbl_machine(print->is_BBL_printer());
+     print->set_started(psGCodeExport);
+ 
+@@ -3134,6 +3139,8 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
+     //BBS: gcode writer doesn't know where the real position of extruder is after inserting custom gcode
+     m_writer.set_current_position_clear(false);
+     m_start_gcode_filament = GCodeProcessor::get_gcode_last_filament(machine_start_gcode);
++    if (custom_gcode_changes_tool(machine_start_gcode, m_writer.toolchange_prefix(), initial_extruder_id))
++        m_writer.init_extruder(initial_extruder_id);
+ 
+     if (is_bbl_printers) {
+         m_writer.init_extruder(initial_non_support_extruder_id);
+@@ -4529,7 +4536,7 @@ LayerResult GCode::process_layer(
+     gcode += ";" + GCodeProcessor::reserved_tag(GCodeProcessor::ETags::Layer_Change) + "\n";
+     // export layer z
+     char buf[64];
+-    sprintf(buf, print.is_BBL_printer() ? "; Z_HEIGHT: %g\n" : ";Z:%g\n", print_z);
++    sprintf(buf, print.is_BBL_printer() ? "; Z_HEIGHT: %g\n" : (GCodeProcessor::s_IsCrealityPrintHost ? ";:%g\n" : ";Z:%g\n"), print_z);
+     gcode += buf;
+     // export layer height
+     float height = first_layer ? static_cast<float>(print_z) : static_cast<float>(print_z) - m_last_layer_z;
+@@ -4595,6 +4602,9 @@ LayerResult GCode::process_layer(
+             print.config().layer_change_gcode.value, m_writer.filament()->id(), &config)
+             + "\n";
+         config.set_key_value("max_layer_z", new ConfigOptionFloat(m_max_layer_z));
++    } else if (GCodeProcessor::s_IsCrealityPrintHost) {
++        sprintf(buf, ";AFTER_LAYER_CHANGE\n;%g\n", print_z);
++        gcode += buf;
+     }
+     //BBS: set layer time fan speed after layer change gcode
+     gcode += ";_SET_FAN_SPEED_CHANGING_LAYER\n";
+@@ -5598,6 +5608,10 @@ void GCode::apply_print_config(const PrintConfig &print_config)
+ void GCode::append_full_config(const Print &print, std::string &str)
+ {
+     DynamicPrintConfig cfg = print.full_print_config();
++    const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
++    const bool is_creality_print_host = host_type_opt && host_type_opt->value == htCrealityPrint;
++    const auto* printer_model_opt = cfg.option<ConfigOptionString>("printer_model");
++    const bool is_creality_hi = printer_model_opt && printer_model_opt->value == "Creality Hi";
+     { // correct the flush_volumes_matrix with flush_multiplier values
+         std::vector<double> temp_cfg_flush_multiplier = cfg.option<ConfigOptionFloats>("flush_multiplier")->values;
+         std::vector<double> temp_flush_volumes_matrix = cfg.option<ConfigOptionFloats>("flush_volumes_matrix")->values;
+@@ -5614,6 +5628,8 @@ void GCode::append_full_config(const Print &print, std::string &str)
+                                [temp_cfg_flush_multiplier_idx](double inputx) { return std::round(inputx * temp_cfg_flush_multiplier_idx); });
+             }
+             cfg.option<ConfigOptionFloats>("flush_volumes_matrix")->values = temp_flush_volumes_matrix;
++            if (is_creality_print_host)
++                cfg.option<ConfigOptionFloats>("flush_multiplier")->values = std::vector<double>(heads_count_tmp, 1.0);
+         } else if (filament_count_tmp == 1) {
+         } // Not applicable to flush matrix situations
+         else { // flush_volumes_matrix value count error?
+@@ -5635,9 +5651,22 @@ void GCode::append_full_config(const Print &print, std::string &str)
+     auto is_banned = [](const std::string &key) {
+         return banned_keys.find(key) != banned_keys.end();
+     };
++    static const std::set<std::string_view> creality_hi_metadata_keys({
++        "creality_flush_time"sv,
++        "default_flush_multiplier"sv,
++        "flush_box_first_clean_length"sv,
++        "flush_box_need_clean_length"sv,
++        "flush_box_need_clean_length_max"sv,
++        "multicolor_method"sv,
++    });
++    auto is_creality_hi_metadata = [](const std::string &key) {
++        return creality_hi_metadata_keys.find(key) != creality_hi_metadata_keys.end();
++    };
+     std::ostringstream ss;
+     for (const std::string& key : cfg.keys()) {
+-        if (!is_banned(key) && !cfg.option(key)->is_nil()) {
++        if (!is_banned(key) && !(is_creality_hi && is_creality_hi_metadata(key)) && !cfg.option(key)->is_nil()) {
++            if (key == "flush_volumes_matrix")
++                ss << "; flush_volumes_changed = 1\n";
+             if (key == "wipe_tower_x" || key == "wipe_tower_y") {
+                 ss << std::fixed << std::setprecision(3) << "; " << key << " = " << dynamic_cast<const ConfigOptionFloats*>(cfg.option(key))->get_at(print.get_plate_index()) << "\n";
+             }
+@@ -5647,6 +5676,25 @@ void GCode::append_full_config(const Print &print, std::string &str)
+                 ss << "; " << key << " = " << cfg.opt_serialize(key) << "\n";
+         }
+     }
++    if (is_creality_hi) {
++        auto append_float = [&ss, &cfg](const char *key, double fallback) {
++            const auto *opt = cfg.option<ConfigOptionFloat>(key);
++            const double value = opt && opt->value > 0.0 ? opt->value : fallback;
++            ss << "; " << key << " = " << value << "\n";
++        };
++        auto append_int = [&ss, &cfg](const char *key, int fallback) {
++            const auto *opt = cfg.option<ConfigOptionInt>(key);
++            const int value = opt && opt->value > 0 ? opt->value : fallback;
++            ss << "; " << key << " = " << value << "\n";
++        };
++
++        ss << "; multicolor_method = 1\n";
++        append_float("creality_flush_time", 105.0);
++        append_float("default_flush_multiplier", 1.3);
++        append_int("flush_box_first_clean_length", 90);
++        append_int("flush_box_need_clean_length", 70);
++        append_int("flush_box_need_clean_length_max", 100);
++    }
+     str += ss.str();
+ }
+ 
+diff --git a/src/libslic3r/GCode/GCodeProcessor.cpp b/src/libslic3r/GCode/GCodeProcessor.cpp
+index 0ab32a6780..1f9bc8f22a 100644
+--- a/src/libslic3r/GCode/GCodeProcessor.cpp
++++ b/src/libslic3r/GCode/GCodeProcessor.cpp
+@@ -114,6 +114,7 @@ const float GCodeProcessor::Wipe_Width = 0.05f;
+ const float GCodeProcessor::Wipe_Height = 0.05f;
+ 
+ bool GCodeProcessor::s_IsBBLPrinter = true;
++bool GCodeProcessor::s_IsCrealityPrintHost = false;
+ 
+ static void set_option_value(ConfigOptionFloats& option, size_t id, float value)
+ {
+@@ -1031,6 +1032,12 @@ void GCodeProcessor::run_post_process()
+                             export_line.append_line(format_line_M73_stop_int(machine.line_m73_stop_mask.c_str(), to_export_stop));
+                             last_exported_stop[i] = to_export_stop;
+                         }
++                        if (s_IsCrealityPrintHost && line == reserved_tag(ETags::Last_Line_M73_Placeholder) &&
++                            i == static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal)) {
++                            char buf[64];
++                            sprintf(buf, ";TIME_ELAPSED:%.6f\n", machine.time);
++                            export_line.append_line(buf);
++                        }
+                     }
+                 }
+             } else if (line == reserved_tag(ETags::Estimated_Printing_Time_Placeholder)) {
+@@ -1160,6 +1167,19 @@ void GCodeProcessor::run_post_process()
+     for (const auto& machine : m_time_processor.machines)
+         g1_times_cache_it.emplace_back(machine.g1_times_cache.begin());
+ 
++    auto creality_elapsed_at_g1 = [&self = std::as_const(m_time_processor)](const size_t g1_counter) {
++        const TimeMachine& machine = self.machines[static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal)];
++        float elapsed_time = 0.0f;
++        for (const TimeMachine::G1LinesCacheItem& item : machine.g1_times_cache) {
++            if (item.id >= g1_counter)
++                break;
++            elapsed_time = item.elapsed_time;
++        }
++        return elapsed_time;
++    };
++
++    bool creality_seen_layer_change = false;
++
+     // add lines M73 to exported gcode
+     auto process_line_move = [
+         // Lambdas, mostly for string formatting, all with an empty capture block.
+@@ -1373,8 +1393,17 @@ void GCodeProcessor::run_post_process()
+                             tag_line.remove_suffix(1);
+                         // strip leading ';'
+                         tag_line.remove_prefix(1);
+-                        if (tag_line == reserved_tag(ETags::Layer_Change))
++                        if (tag_line == reserved_tag(ETags::Layer_Change)) {
++                            if (s_IsCrealityPrintHost) {
++                                if (creality_seen_layer_change) {
++                                    char buf[64];
++                                    sprintf(buf, ";TIME_ELAPSED:%.6f\n", creality_elapsed_at_g1(g1_lines_counter));
++                                    export_line.append_line(buf);
++                                }
++                                creality_seen_layer_change = true;
++                            }
+                             ++current_layer_id;
++                        }
+                     }
+                     // replace placeholder lines
+                     bool processed = process_placeholders(gcode_line);
+diff --git a/src/libslic3r/GCode/GCodeProcessor.hpp b/src/libslic3r/GCode/GCodeProcessor.hpp
+index 546df6fbb2..1510ef46bb 100644
+--- a/src/libslic3r/GCode/GCodeProcessor.hpp
++++ b/src/libslic3r/GCode/GCodeProcessor.hpp
+@@ -387,6 +387,7 @@ class Print;
+         static const float Wipe_Height;
+ 
+         static bool s_IsBBLPrinter;
++        static bool s_IsCrealityPrintHost;
+ 
+     private:
+         using AxisCoords = std::array<double, 4>;
+diff --git a/src/libslic3r/Print.cpp b/src/libslic3r/Print.cpp
+index 0d58e2dc00..94c8745955 100644
+--- a/src/libslic3r/Print.cpp
++++ b/src/libslic3r/Print.cpp
+@@ -3423,7 +3423,8 @@ void Print::_make_wipe_tower()
+             wipe_volumes.push_back(std::vector<float>(flush_matrix.begin()+i*number_of_extruders, flush_matrix.begin()+(i+1)*number_of_extruders));
+ 
+         // Orca: itertate over wipe_volumes and change the non-zero values to the prime_volume
+-        if ((!m_config.purge_in_prime_tower || !m_config.single_extruder_multi_material) && is_wipe_tower_type2) {
++        if ((!m_config.purge_in_prime_tower || !m_config.single_extruder_multi_material) && is_wipe_tower_type2 &&
++            m_config.printer_model.value != "Creality Hi") {
+             for (unsigned int i = 0; i < number_of_extruders; ++i) {
+                 for (unsigned int j = 0; j < number_of_extruders; ++j) {
+                     if (wipe_volumes[i][j] > 0) {
+@@ -3604,6 +3605,7 @@ void Print::export_gcode_from_previous_file(const std::string& file, GCodeProces
+     try {
+         GCodeProcessor processor;
+         GCodeProcessor::s_IsBBLPrinter = is_BBL_printer();
++        GCodeProcessor::s_IsCrealityPrintHost = false;
+         const Vec3d origin = this->get_plate_origin();
+         processor.set_xy_offset(origin(0), origin(1));
+         //processor.enable_producers(true);
+diff --git a/src/libslic3r/PrintConfig.cpp b/src/libslic3r/PrintConfig.cpp
+index 5e657971a5..13b83e9dd3 100644
+--- a/src/libslic3r/PrintConfig.cpp
++++ b/src/libslic3r/PrintConfig.cpp
+@@ -2559,6 +2559,49 @@ void PrintConfigDef::init_fff_params()
+     def->mode = comAdvanced;
+     def->set_default_value(new ConfigOptionFloat(0.0));
+ 
++    def = this->add("creality_flush_time", coFloat);
++    def->label = L("Time per flushing");
++    def->tooltip = L("Time per flushing");
++    def->sidetext = L("s");
++    def->min = 0;
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionFloat(0.0));
++
++    def = this->add("default_flush_multiplier", coFloat);
++    def->min = 0;
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionFloat(1.3));
++
++    def = this->add("flush_box_first_clean_length", coInt);
++    def->label = L("Flush length (first segment)");
++    def->tooltip = L("First segment length used to split flush_length into flush_length_1..N for change filament G-code.");
++    def->sidetext = L("mm");
++    def->min = 1;
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionInt(90));
++
++    def = this->add("flush_box_need_clean_length", coInt);
++    def->label = L("Flush length (standard segment)");
++    def->tooltip = L("Standard segment length used to split flush_length into flush_length_1..N for change filament G-code.");
++    def->sidetext = L("mm");
++    def->min = 1;
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionInt(70));
++
++    def = this->add("flush_box_need_clean_length_max", coInt);
++    def->label = L("Flush length (max segment)");
++    def->tooltip = L("Maximum segment length used to split flush_length into flush_length_1..N for change filament G-code.");
++    def->sidetext = L("mm");
++    def->min = 1;
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionInt(100));
++
++    def = this->add("multicolor_method", coBool);
++    def->label = L("multicolor method");
++    def->tooltip = L("multicolor method");
++    def->mode = comAdvanced;
++    def->set_default_value(new ConfigOptionBool(false));
++
+     def = this->add("machine_unload_filament_time", coFloat);
+     def->label = L("Filament unload time");
+     def->tooltip = L("Time to unload old filament when switch filament. It's usually applicable for single-extruder multi-material machines. "
+diff --git a/src/libslic3r/PrintConfig.hpp b/src/libslic3r/PrintConfig.hpp
+index 352d3b5f67..00b6fd7c65 100644
+--- a/src/libslic3r/PrintConfig.hpp
++++ b/src/libslic3r/PrintConfig.hpp
+@@ -1370,6 +1370,12 @@ PRINT_CONFIG_CLASS_DEFINE(
+     ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope))
+     ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope_segment_length))
+     ((ConfigOptionBool,               extrusion_rate_smoothing_external_perimeter_only))
++    ((ConfigOptionFloat,               creality_flush_time))
++    ((ConfigOptionFloat,               default_flush_multiplier))
++    ((ConfigOptionInt,                 flush_box_first_clean_length))
++    ((ConfigOptionInt,                 flush_box_need_clean_length))
++    ((ConfigOptionInt,                 flush_box_need_clean_length_max))
++    ((ConfigOptionBool,                multicolor_method))
+ 
+     
+     ((ConfigOptionPercents,            retract_before_wipe))
+diff --git a/src/slic3r/GUI/GCodeViewer.cpp b/src/slic3r/GUI/GCodeViewer.cpp
+index 79afc1daaf..0c18fd96e7 100644
+--- a/src/slic3r/GUI/GCodeViewer.cpp
++++ b/src/slic3r/GUI/GCodeViewer.cpp
+@@ -103,6 +103,49 @@ static std::string get_view_type_string(libvgcode::EViewType view_type)
+     return "";
+ }
+ 
++static bool has_recorded_flush_volume(const PrintEstimatedStatistics& statistics)
++{
++    for (const auto& [_, volume] : statistics.flush_per_filament)
++        if (volume > EPSILON)
++            return true;
++    return false;
++}
++
++static std::map<size_t, double> estimate_flush_volumes_from_matrix(
++    const std::map<std::pair<int, int>, int>& filament_change_count_map,
++    size_t filaments_count)
++{
++    std::map<size_t, double> estimated_flush_volumes;
++    if (filament_change_count_map.empty() || filaments_count == 0)
++        return estimated_flush_volumes;
++
++    const auto* matrix_option = wxGetApp().preset_bundle->project_config.option<ConfigOptionFloats>("flush_volumes_matrix");
++    if (matrix_option == nullptr || matrix_option->values.empty())
++        return estimated_flush_volumes;
++
++    const std::vector<double> flush_matrix = get_flush_volumes_matrix(matrix_option->values, 0, 1);
++    const size_t matrix_side = static_cast<size_t>(std::sqrt(static_cast<double>(flush_matrix.size())) + EPSILON);
++    if (matrix_side == 0 || matrix_side * matrix_side != flush_matrix.size())
++        return estimated_flush_volumes;
++
++    const size_t usable_filaments = std::min(filaments_count, matrix_side);
++    for (const auto& [from_to, change_count] : filament_change_count_map) {
++        const int from_filament = from_to.first;
++        const int to_filament = from_to.second;
++        if (change_count <= 0 || from_filament < 0 || to_filament < 0)
++            continue;
++
++        const size_t from = static_cast<size_t>(from_filament);
++        const size_t to = static_cast<size_t>(to_filament);
++        if (from >= usable_filaments || to >= usable_filaments || from == to)
++            continue;
++
++        estimated_flush_volumes[to] += flush_matrix[from * matrix_side + to] * static_cast<double>(change_count);
++    }
++
++    return estimated_flush_volumes;
++}
++
+ // Find an index of a value in a sorted vector, which is in <z-eps, z+eps>.
+ // Returns -1 if there is no such member.
+ static int find_close_layer_idx(const std::vector<double> &zs, double &z, double eps)
+@@ -2637,7 +2680,8 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+         PartPlateList& plate_list = wxGetApp().plater()->get_partplate_list();
+         for (auto plate : plate_list.get_nonempty_plate_list())
+         {
+-            auto plate_print_statistics = plate->get_slice_result()->print_statistics;
++            auto slice_result = plate->get_slice_result();
++            auto plate_print_statistics = slice_result->print_statistics;
+             auto plate_extruders = plate->get_extruders(true);
+             auto max_extruders_colors = wxGetApp().plater()->get_extruders_colors().size();
+             for (size_t extruder_id : plate_extruders) {
+@@ -2672,6 +2716,17 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+                     support_volume_of_extruders_all_plates[extruder_id] += support_volume;
+                 }
+             }
++
++            if (!has_recorded_flush_volume(plate_print_statistics)) {
++                auto estimated_flush_volumes = estimate_flush_volumes_from_matrix(
++                    slice_result->filament_change_count_map,
++                    slice_result->filaments_count > 0 ? slice_result->filaments_count : filament_diameters.size());
++                for (const auto& [extruder_id, volume] : estimated_flush_volumes) {
++                    model_volume_of_extruders_all_plates[static_cast<int>(extruder_id)] += 0;
++                    flushed_volume_of_extruders_all_plates[static_cast<int>(extruder_id)] += volume;
++                }
++            }
++
+             const PrintEstimatedStatistics::Mode& plate_time_mode = plate_print_statistics.modes[static_cast<size_t>(m_viewer.get_time_mode())];
+             total_time_all_plates += plate_time_mode.time;
+ 
+@@ -3564,6 +3619,12 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+     double unit_conver = imperial_units ? GizmoObjectManipulation::oz_to_g : 1;
+     std::vector<double> used_filaments_m;
+     std::vector<double> used_filaments_g;
++    std::map<size_t, double> estimated_flush_volumes;
++    if (!has_recorded_flush_volume(m_print_statistics) && m_gcode_result != nullptr) {
++        estimated_flush_volumes = estimate_flush_volumes_from_matrix(
++            m_gcode_result->filament_change_count_map,
++            m_gcode_result->filaments_count > 0 ? m_gcode_result->filaments_count : m_filament_diameters.size());
++    }
+ 
+     // used filament statistics
+     for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
+@@ -3599,18 +3660,22 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+     }
+ 
+     for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
+-        if (m_print_statistics.flush_per_filament.find(extruder_id) == m_print_statistics.flush_per_filament.end()) {
++        auto flush_it = m_print_statistics.flush_per_filament.find(extruder_id);
++        auto estimated_flush_it = estimated_flush_volumes.find(extruder_id);
++        if (flush_it == m_print_statistics.flush_per_filament.end() && estimated_flush_it == estimated_flush_volumes.end()) {
+             flushed_filaments_m.push_back(0.0);
+             flushed_filaments_g.push_back(0.0);
+         }
+         else {
+-            double volume = m_print_statistics.flush_per_filament.at(extruder_id);
++            double volume = flush_it != m_print_statistics.flush_per_filament.end() && flush_it->second > EPSILON ?
++                flush_it->second : (estimated_flush_it != estimated_flush_volumes.end() ? estimated_flush_it->second : 0.0);
+             auto [flushed_filament_m, flushed_filament_g] = get_used_filament_from_volume(volume, extruder_id);
+             flushed_filaments_m.push_back(flushed_filament_m);
+             flushed_filaments_g.push_back(flushed_filament_g);
+             total_flushed_filament_m += flushed_filament_m;
+             total_flushed_filament_g += flushed_filament_g;
+-            displayed_columns |= ColumnData::Flushed;
++            if (flushed_filament_m != 0.0 || flushed_filament_g != 0.0)
++                displayed_columns |= ColumnData::Flushed;
+         }
+     }
+ 
+diff --git a/src/slic3r/GUI/GUI_ObjectList.cpp b/src/slic3r/GUI/GUI_ObjectList.cpp
+index 6b612dc5e0..72b76247ca 100644
+--- a/src/slic3r/GUI/GUI_ObjectList.cpp
++++ b/src/slic3r/GUI/GUI_ObjectList.cpp
+@@ -305,6 +305,42 @@ ObjectList::ObjectList(wxWindow* parent) :
+         set_tooltip_for_item(this->get_mouse_position_in_control());
+         event.Skip();
+     });
++
++    GetMainWindow()->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& event) {
++        wxDataViewItem item;
++        wxDataViewColumn* col = nullptr;
++        this->HitTest(event.GetPosition(), item, col);
++        if (!item.IsOk() || col == nullptr || col->GetModelColumn() != colFilament) {
++            event.Skip();
++            return;
++        }
++
++        this->CallAfter([this, item]() {
++            if (!item.IsOk())
++                return;
++
++            UnselectAll();
++            Select(item);
++            wxMenu menu;
++            const int first_id = wxID_HIGHEST + 500;
++            std::vector<wxBitmap*> icons = get_extruder_color_icons(true);
++            for (int i = 1; i <= filaments_count(); ++i) {
++                wxMenuItem* menu_item = new wxMenuItem(&menu, first_id + i, wxString::Format("%d", i));
++                if (i <= static_cast<int>(icons.size()) && icons[i - 1] != nullptr)
++                    menu_item->SetBitmap(*icons[i - 1]);
++                menu.Append(menu_item);
++            }
++
++            menu.Bind(wxEVT_MENU, [this, first_id](wxCommandEvent& evt) {
++                const int extruder = evt.GetId() - first_id;
++                if (extruder > 0 && extruder <= filaments_count())
++                    set_extruder_for_selected_items(extruder);
++            }, first_id + 1, first_id + filaments_count());
++
++            PopupMenu(&menu);
++        });
++    });
++
+ #endif //__WXMSW__
+ 
+     Bind(wxEVT_DATAVIEW_ITEM_CONTEXT_MENU,  &ObjectList::OnContextMenu,     this);
+@@ -6600,7 +6636,7 @@ void ObjectList::set_extruder_for_selected_items(const int extruder)
+             const int obj_idx = m_objects_model->GetObjectIdByItem(item);
+             int vol_idx = m_objects_model->GetVolumeIdByItem(item);
+             vol_idx     = m_objects_model->get_real_volume_index_in_3d(obj_idx, vol_idx);
+-            if ((obj_idx < m_objects->size()) && (obj_idx < (*m_objects)[obj_idx]->volumes.size())) {
++            if ((obj_idx < m_objects->size()) && (vol_idx < (*m_objects)[obj_idx]->volumes.size())) {
+                 auto volume_type = (*m_objects)[obj_idx]->volumes[vol_idx]->type();
+                 if (volume_type != ModelVolumeType::MODEL_PART && volume_type != ModelVolumeType::PARAMETER_MODIFIER)
+                     continue;
+diff --git a/src/slic3r/GUI/ObjectDataViewModel.cpp b/src/slic3r/GUI/ObjectDataViewModel.cpp
+index 7944718e59..814f480b20 100644
+--- a/src/slic3r/GUI/ObjectDataViewModel.cpp
++++ b/src/slic3r/GUI/ObjectDataViewModel.cpp
+@@ -1494,8 +1494,10 @@ bool ObjectDataViewModel::UpdateColumValues(unsigned col)
+ 
+         if (items.IsEmpty()) return false;
+ 
+-        for (auto item : items)
++        for (auto item : items) {
+             UpdateExtruderBitmap(item);
++            ItemChanged(item);
++        }
+ 
+         return true;
+     }
+@@ -1621,8 +1623,10 @@ void ObjectDataViewModel::UpdateVolumesExtruderBitmap(wxDataViewItem obj_item, b
+         return;
+     ObjectDataViewModelNode* obj_node = static_cast<ObjectDataViewModelNode*>(obj_item.GetID());
+     for (auto child : obj_node->GetChildren())
+-        if (child->GetVolumeType() == ModelVolumeType::MODEL_PART)
++        if (child->GetVolumeType() == ModelVolumeType::MODEL_PART) {
+             child->UpdateExtruderAndColorIcon(use_obj_extruder ? obj_node->GetExtruder() : "");
++            ItemChanged(wxDataViewItem(child));
++        }
+ }
+ 
+ int ObjectDataViewModel::GetDefaultExtruderIdx(wxDataViewItem item)
+diff --git a/src/slic3r/GUI/Plater.cpp b/src/slic3r/GUI/Plater.cpp
+index c6a5ac3aba..4459d27933 100644
+--- a/src/slic3r/GUI/Plater.cpp
++++ b/src/slic3r/GUI/Plater.cpp
+@@ -234,7 +234,7 @@ static string get_diameter_string(float diameter)
+     std::string s = stream.str();
+     if (s.find('.') != std::string::npos) {   // Remove trailing zeros, but keep at least one decimal if needed
+         s.erase(s.find_last_not_of('0') + 1);
+-        if (s.back() == '.') s += '0';        // Ensure "1." → "1.0"
++        if (s.back() == '.') s += '0';        // Ensure "1." becomes "1.0"
+     }
+     return s;
+ }
+@@ -332,7 +332,7 @@ SlicedInfo::SlicedInfo(wxWindow *parent) :
+     };
+ 
+     init_info_label(_L("Used Filament (m)"));
+-    init_info_label(_L("Used Filament (mm³)"));
++    init_info_label(_L("Used Filament (mm┬│)"));
+     init_info_label(_L("Used Filament (g)"));
+     init_info_label(_L("Used Materials"));
+     init_info_label(_L("Cost"));
+@@ -1590,6 +1590,8 @@ void Sidebar::update_sync_ams_btn_enable(wxUpdateUIEvent &e)
+          //btn_sync->Enable(!m_last_slice_state);
+          p->m_printer_bbl_sync->Enable(!m_last_slice_state);
+          ams_btn->Enable(!m_last_slice_state);
++         if (cfs_btn)
++             cfs_btn->Enable(!m_last_slice_state);
+          Refresh();
+      }
+  }
+@@ -2122,7 +2124,7 @@ Sidebar::Sidebar(Plater *parent)
+ 
+     ams_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "ams_fila_sync", wxEmptyString, wxDefaultSize, wxDefaultPosition,
+                                                  wxBU_EXACTFIT | wxNO_BORDER, false, 16); // ORCA match icon size with other icons as 16x16
+-    ams_btn->SetToolTip(_L("Synchronize filament list from AMS"));
++    ams_btn->SetToolTip(_L("Synchronize filament list from AMS/CFS"));
+     ams_btn->Bind(wxEVT_BUTTON, [this, scrolled_sizer](wxCommandEvent &e) {
+         sync_ams_list();
+     });
+@@ -2131,6 +2133,15 @@ Sidebar::Sidebar(Plater *parent)
+     p->m_bpButton_ams_filament = ams_btn;
+ 
+     bSizer39->Add(ams_btn, 0, wxALIGN_CENTER | wxLEFT, FromDIP(SidebarProps::WideSpacing()));
++
++    cfs_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "ams_setting_normal", wxEmptyString, wxDefaultSize, wxDefaultPosition,
++                                                wxBU_EXACTFIT | wxNO_BORDER, false, 16);
++    cfs_btn->SetToolTip(_L("Show CFS slots and external spool"));
++    cfs_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &e) {
++        show_creality_cfs_slots();
++    });
++    cfs_btn->Hide();
++    bSizer39->Add(cfs_btn, 0, wxALIGN_CENTER | wxLEFT, FromDIP(SidebarProps::IconSpacing()));
+     //bSizer39->Add(FromDIP(10), 0, 0, 0, 0 );
+ 
+     ScalableButton* set_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "settings");
+@@ -2438,6 +2449,8 @@ void Sidebar::update_all_preset_comboboxes()
+         p->m_printer_connect->Hide();
+         //only show sync-ams button for BBL printer
+         p->m_bpButton_ams_filament->Show();
++        if (cfs_btn)
++            cfs_btn->Hide();
+         //update print button default value for bbl or third-party printer
+         p_mainframe->set_print_button_to_default(MainFrame::PrintSelectType::ePrintPlate);
+     } else {
+@@ -2446,10 +2459,13 @@ void Sidebar::update_all_preset_comboboxes()
+ 
+         // ORCA: show/hide sync-ams button based on filament sync mode
+         auto agent = wxGetApp().getAgent();
+-        if (agent && agent->get_filament_sync_mode() != FilamentSyncMode::none)
++        const bool can_sync_cfs = can_sync_creality_cfs();
++        if ((agent && agent->get_filament_sync_mode() != FilamentSyncMode::none) || can_sync_cfs)
+             p->m_bpButton_ams_filament->Show();
+         else
+             p->m_bpButton_ams_filament->Hide();
++        if (cfs_btn)
++            cfs_btn->Show(can_sync_cfs);
+ 
+         auto print_btn_type = MainFrame::PrintSelectType::eExportGcode;
+         wxString url = from_u8(PrintHost::get_print_host_webui(&cfg));
+@@ -3247,14 +3263,11 @@ void Sidebar::on_bed_type_change(BedType bed_type)
+  * NetworkAgent APIs. The data pipeline is:
+  *
+  *   Printer Device (MQTT/LAN messages)
+- *       ↓
+- *   NetworkAgent (receives JSON, triggers OnMessageFn callbacks)
+- *       ↓
+- *   MachineObject::parse_json() (updates device state)
+- *       ├── vt_slot (std::vector<DevAmsTray>) - virtual tray data for external filament
+- *       └── DevFilaSystem → DevAms → DevAmsTray - AMS unit hierarchy
+- *       ↓
+- *   build_filament_ams_list() [THIS FUNCTION] - aggregates into DynamicPrintConfig maps
++ *       -> NetworkAgent (receives JSON, triggers OnMessageFn callbacks)
++ *       -> MachineObject::parse_json() (updates device state)
++ *          - vt_slot (std::vector<DevAmsTray>) - virtual tray data for external filament
++ *          - DevFilaSystem -> DevAms -> DevAmsTray - AMS unit hierarchy
++ *       -> build_filament_ams_list() [THIS FUNCTION] - aggregates into DynamicPrintConfig maps
+  *
+  * Data Sources:
+  * - obj->vt_slot: Virtual trays for external/manual filament loading (when ams_support_virtual_tray is true)
+@@ -3401,6 +3414,141 @@ void Sidebar::get_small_btn_sync_pos_size(wxPoint &pt, wxSize &size) {
+     pt   = ams_btn->GetScreenPosition();
+ }
+ 
++bool Sidebar::can_sync_creality_cfs() const
++{
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle)
++        return false;
++
++    const DynamicPrintConfig& cfg = preset_bundle->printers.get_edited_preset().config;
++    const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
++    return host_type_opt && host_type_opt->value == htCrealityPrint &&
++           cfg.has("print_host") && !cfg.opt_string("print_host").empty() &&
++           (!cfg.has("single_extruder_multi_material") || cfg.opt_bool("single_extruder_multi_material"));
++}
++
++bool Sidebar::load_creality_cfs_list()
++{
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle)
++        return false;
++
++    DynamicPrintConfig cfg = preset_bundle->printers.get_edited_preset().config;
++    CrealityPrint creality_host(&cfg);
++    auto cfs_slots = creality_host.query_cfs_slots(false);
++
++    std::map<int, DynamicPrintConfig> filament_ams_list;
++    int tray_idx = 0;
++    for (const auto& slot : cfs_slots) {
++        if (slot.external || slot.type.empty())
++            continue;
++
++        std::string filament_id = preset_bundle->filaments.filament_id_by_type(slot.type);
++        wxColour colour(slot.color);
++        if (!colour.IsOk())
++            colour = wxColour("#FFFFFF");
++
++        DynamicPrintConfig tray_config;
++        tray_config.set_key_value("filament_id", new ConfigOptionStrings{filament_id});
++        tray_config.set_key_value("tag_uid", new ConfigOptionStrings{});
++        tray_config.set_key_value("ams_id", new ConfigOptionStrings{std::to_string(slot.box_id)});
++        tray_config.set_key_value("slot_id", new ConfigOptionStrings{std::to_string(slot.material_id)});
++        tray_config.set_key_value("filament_type", new ConfigOptionStrings{slot.type});
++        tray_config.set_key_value("tray_name", new ConfigOptionStrings{slot.tool_id.size() > 1 ? slot.tool_id.substr(1) : slot.tool_id});
++        tray_config.set_key_value("filament_colour", new ConfigOptionStrings{into_u8(colour.GetAsString(wxC2S_HTML_SYNTAX))});
++        tray_config.set_key_value("filament_multi_colour", new ConfigOptionStrings{});
++        tray_config.set_key_value("filament_colour_type", new ConfigOptionStrings{"0"});
++        tray_config.set_key_value("filament_exist", new ConfigOptionBools{true});
++        tray_config.set_key_value("filament_slot_placeholder", new ConfigOptionBools{false});
++
++        std::optional<FilamentBaseInfo> info = preset_bundle->get_filament_by_filament_id(filament_id);
++        tray_config.set_key_value("filament_is_support", new ConfigOptionBools{info.has_value() ? info->is_support : false});
++
++        filament_ams_list.emplace(tray_idx++, std::move(tray_config));
++    }
++
++    p->ams_list_device = "crealityprint:" + cfg.opt_string("print_host");
++    wxGetApp().preset_bundle->filament_ams_list = filament_ams_list;
++    for (auto c : p->combos_filament)
++        c->update();
++    p->combo_printer->update();
++
++    return !filament_ams_list.empty();
++}
++
++void Sidebar::show_creality_cfs_slots()
++{
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle || !can_sync_creality_cfs()) {
++        MessageDialog dlg(this,
++            _L("Select a Creality Print host before reading CFS slots."),
++            _L("CFS Slots"), wxOK);
++        dlg.ShowModal();
++        return;
++    }
++
++    DynamicPrintConfig cfg = preset_bundle->printers.get_edited_preset().config;
++    CrealityPrint creality_host(&cfg);
++
++    std::vector<CrealityPrint::CfsSlotInfo> slots;
++    {
++        wxBusyCursor wait;
++        slots = creality_host.query_cfs_slots(true);
++    }
++
++    wxDialog dlg(this, wxID_ANY, _L("CFS Slots"), wxDefaultPosition, wxDefaultSize,
++                 wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
++    auto* main_sizer = new wxBoxSizer(wxVERTICAL);
++    main_sizer->Add(new wxStaticText(&dlg, wxID_ANY, _L("CFS Slots")), 0, wxALL, FromDIP(12));
++
++    if (slots.empty()) {
++        auto* empty = new wxStaticText(&dlg, wxID_ANY, _L("No CFS or external spool data was returned by the printer."));
++        empty->Wrap(FromDIP(420));
++        main_sizer->Add(empty, 0, wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12));
++    } else {
++        auto* grid = new wxFlexGridSizer(0, 5, FromDIP(8), FromDIP(12));
++        auto add_header = [grid, &dlg](const wxString& text) {
++            auto* label = new wxStaticText(&dlg, wxID_ANY, text);
++            label->SetFont(::Label::Head_13);
++            grid->Add(label, 0, wxALIGN_CENTER_VERTICAL);
++        };
++        add_header(_L("Slot"));
++        add_header(_L("Source"));
++        add_header(_L("Type"));
++        add_header(_L("Color"));
++        add_header(_L("Status"));
++
++        for (const auto& slot : slots) {
++            wxString slot_name = slot.external ? _L("External") :
++                from_u8(slot.tool_id.size() > 1 ? slot.tool_id.substr(1) : slot.tool_id);
++            wxString source = slot.external ? _L("Spool") :
++                wxString::Format("CFS %d", slot.box_id);
++            wxString type = slot.type.empty() ? _L("Unknown") : from_u8(slot.type);
++            wxString status = slot.external ? (slot.loaded ? _L("Detected") : _L("No material data")) : _L("Loaded");
++
++            grid->Add(new wxStaticText(&dlg, wxID_ANY, slot_name), 0, wxALIGN_CENTER_VERTICAL);
++            grid->Add(new wxStaticText(&dlg, wxID_ANY, source), 0, wxALIGN_CENTER_VERTICAL);
++            grid->Add(new wxStaticText(&dlg, wxID_ANY, type), 0, wxALIGN_CENTER_VERTICAL);
++
++            auto* color_panel = new wxPanel(&dlg, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(52), FromDIP(18)));
++            wxColour colour(slot.color);
++            color_panel->SetBackgroundColour(colour.IsOk() ? colour : wxColour("#FFFFFF"));
++            grid->Add(color_panel, 0, wxALIGN_CENTER_VERTICAL);
++
++            grid->Add(new wxStaticText(&dlg, wxID_ANY, status), 0, wxALIGN_CENTER_VERTICAL);
++        }
++        main_sizer->Add(grid, 0, wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12));
++    }
++
++    auto* buttons = dlg.CreateSeparatedButtonSizer(wxOK);
++    if (buttons)
++        main_sizer->Add(buttons, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(12));
++
++    dlg.SetSizerAndFit(main_sizer);
++    dlg.SetMinSize(wxSize(FromDIP(460), -1));
++    dlg.ShowModal();
++}
++
+ void Sidebar::load_ams_list(MachineObject* obj)
+ {
+     std::map<int, DynamicPrintConfig> filament_ams_list;
+@@ -3438,14 +3586,33 @@ void Sidebar::load_ams_list(MachineObject* obj)
+ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+ {
+     wxBusyCursor cursor;
+-    // Force load ams list
+-    auto obj = wxGetApp().getDeviceManager()->get_selected_machine();
+-    if (!obj)
+-        return;
+-    GUI::wxGetApp().sidebar().load_ams_list(obj);
++    MachineObject* obj = nullptr;
++    bool using_creality_cfs = can_sync_creality_cfs();
++    if (using_creality_cfs) {
++        if (!load_creality_cfs_list()) {
++            MessageDialog dlg(this,
++                _L("Could not read CFS slots from the selected Creality Print host."),
++                _L("Sync filaments with CFS"), wxOK);
++            dlg.ShowModal();
++            return;
++        }
++    } else {
++        // Force load ams list
++        obj = wxGetApp().getDeviceManager()->get_selected_machine();
++        if (!obj)
++            return;
++        GUI::wxGetApp().sidebar().load_ams_list(obj);
++    }
+ 
+     auto & list = wxGetApp().preset_bundle->filament_ams_list;
+     if (list.empty()) {
++        if (using_creality_cfs) {
++            MessageDialog dlg(this,
++                _L("No active CFS slots were returned by the selected Creality Print host."),
++                _L("Sync filaments with CFS"), wxOK);
++            dlg.ShowModal();
++            return;
++        }
+         auto printer_name = p->plater->get_selected_printer_name_in_combox();
+         p->plater->pop_warning_and_go_to_device_page(printer_name, Plater::PrinterWarningType::NOT_CONNECTED, _L("Sync printer information"));
+         return;
+@@ -3461,6 +3628,13 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+         }
+     }
+     if (!exist_at_list_one_filament) {
++        if (using_creality_cfs) {
++            MessageDialog dlg(this,
++                _L("No usable CFS filament data was returned by the selected Creality Print host."),
++                _L("Sync filaments with CFS"), wxOK);
++            dlg.ShowModal();
++            return;
++        }
+         if (!obj->is_filament_installed()) {
+             p->plater->pop_warning_and_go_to_device_page("", Plater::PrinterWarningType::UNINSTALL_FILAMENT, _L("Sync printer information"));
+             return;
+@@ -3468,7 +3642,7 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+         p->plater->pop_warning_and_go_to_device_page("", Plater::PrinterWarningType::EMPTY_FILAMENT, _L("Sync printer information"));
+         return;
+     }
+-    if (!wxGetApp().plater()->is_same_printer_for_connected_and_selected()) {
++    if (!using_creality_cfs && !wxGetApp().plater()->is_same_printer_for_connected_and_selected()) {
+         return;
+     }
+     std::string ams_filament_ids = wxGetApp().app_config->get("ams_filament_ids", p->ams_list_device);
+@@ -3476,34 +3650,37 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+     if (!ams_filament_ids.empty()) {
+         boost::algorithm::split(list2, ams_filament_ids, boost::algorithm::is_any_of(","));
+     }
+-    wxGetApp().plater()->update_all_plate_thumbnails(true);//preview thumbnail for sync_dlg
+-    SyncAmsInfoDialog::SyncInfo temp_info;
+-    temp_info.use_dialog_pos = false;
+-    temp_info.cancel_text_to_later = is_from_big_sync_btn;
+-    if (m_sync_dlg == nullptr) {
+-        m_sync_dlg = new SyncAmsInfoDialog(this, temp_info);
+-    } else {
+-        m_sync_dlg->set_info(temp_info);
+-    }
+-    int dlg_res{(int) wxID_CANCEL};
+-    if (m_sync_dlg->is_need_show()) {
+-        m_sync_dlg->deal_only_exist_ext_spool(obj);
+-        if (m_sync_dlg->is_dirty_filament()) {
+-            wxGetApp().get_tab(Preset::TYPE_FILAMENT)->select_preset(wxGetApp().preset_bundle->filament_presets[0], false, "", false, true);
+-            wxGetApp().preset_bundle->export_selections(*wxGetApp().app_config);
+-            dynamic_filament_list.update();
+-        }
+-        m_sync_dlg->set_check_dirty_fialment(false);
+-        dlg_res = m_sync_dlg->ShowModal();
+-    } else {
+-        dlg_res =(int) wxID_YES;
+-    }
+-    if (dlg_res == wxID_CANCEL)
+-        return;
+-    auto sync_result = m_sync_dlg->get_result();
+-    if (!sync_result.is_same_printer) {
+-        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "check error: sync_result.is_same_printer value is false";
+-        return;
++    int dlg_res{(int) wxID_YES};
++    SyncAmsInfoDialog::SyncResult sync_result;
++    if (!using_creality_cfs) {
++        wxGetApp().plater()->update_all_plate_thumbnails(true);//preview thumbnail for sync_dlg
++        SyncAmsInfoDialog::SyncInfo temp_info;
++        temp_info.use_dialog_pos = false;
++        temp_info.cancel_text_to_later = is_from_big_sync_btn;
++        if (m_sync_dlg == nullptr) {
++            m_sync_dlg = new SyncAmsInfoDialog(this, temp_info);
++        } else {
++            m_sync_dlg->set_info(temp_info);
++        }
++        if (m_sync_dlg->is_need_show()) {
++            m_sync_dlg->deal_only_exist_ext_spool(obj);
++            if (m_sync_dlg->is_dirty_filament()) {
++                wxGetApp().get_tab(Preset::TYPE_FILAMENT)->select_preset(wxGetApp().preset_bundle->filament_presets[0], false, "", false, true);
++                wxGetApp().preset_bundle->export_selections(*wxGetApp().app_config);
++                dynamic_filament_list.update();
++            }
++            m_sync_dlg->set_check_dirty_fialment(false);
++            dlg_res = m_sync_dlg->ShowModal();
++        } else {
++            dlg_res =(int) wxID_YES;
++        }
++        if (dlg_res == wxID_CANCEL)
++            return;
++        sync_result = m_sync_dlg->get_result();
++        if (!sync_result.is_same_printer) {
++            BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "check error: sync_result.is_same_printer value is false";
++            return;
++        }
+     }
+     list2.resize(list.size());
+     auto iter = list.begin();
+@@ -3672,9 +3849,16 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+             }
+         }
+     }
+-    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "begin pop_finsish_sync_ams_dialog";
+-    pop_finsish_sync_ams_dialog();
+-    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "finish pop_finsish_sync_ams_dialog";
++    if (using_creality_cfs) {
++        MessageDialog dlg(this,
++            _L("CFS filament list synchronized."),
++            _L("Sync filaments with CFS"), wxOK);
++        dlg.ShowModal();
++    } else {
++        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "begin pop_finsish_sync_ams_dialog";
++        pop_finsish_sync_ams_dialog();
++        BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "finish pop_finsish_sync_ams_dialog";
++    }
+ }
+ 
+ 
+@@ -8518,13 +8702,13 @@ void Plater::priv::replace_all_with_stl()
+         std::string volume_name = volume->name;
+ 
+         if (new_path == input_path) {
+-            status += boost::str(boost::format(_L("✖ Skipped %1%: same file.\n").ToStdString()) % volume_name);
++            status += boost::str(boost::format(_L("Skipped %1%: same file.\n").ToStdString()) % volume_name);
+             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " skipping replace volume : same filename " << new_path;
+             continue;
+         }
+ 
+         if (!fs::exists(new_path)) {
+-            status += boost::str(boost::format(_L("✖ Skipped %1%: file does not exist.\n").ToStdString()) % volume_name);
++            status += boost::str(boost::format(_L("Skipped %1%: file does not exist.\n").ToStdString()) % volume_name);
+             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " cannot replace volume : filen does not exist " << new_path;
+             continue;
+         }
+@@ -8532,12 +8716,12 @@ void Plater::priv::replace_all_with_stl()
+         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " replacing volume : " << input_path << " with " << new_path;
+ 
+         if (!replace_volume_with_stl(object_idx, volume_idx, new_path, "Replace with 3D file")) {
+-            status += boost::str(boost::format(_L("✖ Skipped %1%: failed to replace.\n").ToStdString()) % volume_name);
++            status += boost::str(boost::format(_L("Skipped %1%: failed to replace.\n").ToStdString()) % volume_name);
+             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " cannot replace volume : failed to replace with " << new_path;
+             continue;
+         }
+ 
+-        status += boost::str(boost::format(_L("✔ Replaced %1%.\n").ToStdString()) % volume_name);
++        status += boost::str(boost::format(_L("Replaced %1%.\n").ToStdString()) % volume_name);
+     }
+ 
+     // update 3D scene
+@@ -12602,7 +12786,7 @@ void Plater::_calib_pa_pattern(const Calib_Params& params)
+     if (accels.empty()) {
+         accels.assign({accel});
+         const auto msg{_L("INFO:") + "\n" +
+-                       _L("No accelerations provided for calibration. Use default acceleration value ") + std::to_string(long(accel)) + _L(u8"mm/s²")};
++                       _L("No accelerations provided for calibration. Use default acceleration value ") + std::to_string(long(accel)) + _L(u8"mm/s┬▓")};
+         get_notification_manager()->push_notification(msg.ToStdString());
+     } else {
+         // set max acceleration in case of batch mode to get correct test pattern size
+@@ -18193,9 +18377,9 @@ void Plater::show_object_info()
+         volume_val *= std::fabs(t.matrix().block(0, 0, 3, 3).determinant());
+     volume_val = volume_val * pow(koef,3);
+     if (imperial_units)
+-        info_text += (boost::format(_utf8(L("Volume: %1% in³\n"))) %volume_val).str();
++        info_text += (boost::format(_utf8(L("Volume: %1% in┬│\n"))) %volume_val).str();
+     else
+-        info_text += (boost::format(_utf8(L("Volume: %1% mm³\n"))) %volume_val).str();
++        info_text += (boost::format(_utf8(L("Volume: %1% mm┬│\n"))) %volume_val).str();
+     info_text += (boost::format(_utf8(L("Triangles: %1%\n"))) %face_count).str();
+ 
+     wxString info_manifold;
+diff --git a/src/slic3r/GUI/Plater.hpp b/src/slic3r/GUI/Plater.hpp
+index f2089c1c4f..bd633747e0 100644
+--- a/src/slic3r/GUI/Plater.hpp
++++ b/src/slic3r/GUI/Plater.hpp
+@@ -131,6 +131,7 @@ class Sidebar : public wxPanel
+     ConfigOptionMode    m_mode;
+     //Button *         btn_sync{nullptr};
+     ScalableButton *  ams_btn{nullptr};
++    ScalableButton *  cfs_btn{nullptr};
+     bool                                    m_last_slice_state = false;
+     SyncNozzleAndAmsDialog*                 m_sna_dialog{nullptr};
+     FinishSyncAmsDialog*                    m_fna_dialog{nullptr};
+@@ -141,6 +142,9 @@ class Sidebar : public wxPanel
+     SyncAmsInfoDialog*                      m_sync_dlg{nullptr};
+ 
+     void update_sync_ams_btn_enable(wxUpdateUIEvent &e);
++    bool can_sync_creality_cfs() const;
++    bool load_creality_cfs_list();
++    void show_creality_cfs_slots();
+ 
+ public:
+     enum DockingState
+@@ -977,4 +981,4 @@ wxArrayString get_all_camera_view_type();
+ } // namespace GUI
+ } // namespace Slic3r
+ 
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/slic3r/GUI/PrintHostDialogs.cpp b/src/slic3r/GUI/PrintHostDialogs.cpp
+index 42a0108383..0a83e2481c 100644
+--- a/src/slic3r/GUI/PrintHostDialogs.cpp
++++ b/src/slic3r/GUI/PrintHostDialogs.cpp
+@@ -1874,6 +1874,8 @@ CrealityPrintHostSendDialog::CrealityPrintHostSendDialog(const fs::path&
+ void CrealityPrintHostSendDialog::init()
+ {
+     PrintHostSendDialog::init();
++    m_printer_slots.clear();
++    m_slot_combos.clear();
+ 
+     auto* creality_host = static_cast<CrealityPrint*>(m_printhost);
+     bool multi_color;
+@@ -1888,7 +1890,7 @@ void CrealityPrintHostSendDialog::init()
+         return;
+ 
+     auto* group_box = new wxStaticBox(this, wxID_ANY,
+-        wxString::Format(_L("Printer: %s"), printer_name));
++        _L("Printer: ") + from_u8(printer_name));
+     auto* group_sizer = new wxStaticBoxSizer(group_box, wxVERTICAL);
+     content_sizer->Add(group_sizer, 0, wxEXPAND);
+ 
+@@ -1897,6 +1899,10 @@ void CrealityPrintHostSendDialog::init()
+     if (!saved.empty()) {
+         try { m_enableSelfTest = std::stoi(saved) != 0; } catch (...) {}
+     }
++    saved = app_config->get("recent", CONFIG_KEY_USE_EXTERNAL_SPOOL);
++    if (!saved.empty()) {
++        try { m_useExternalSpool = std::stoi(saved) != 0; } catch (...) {}
++    }
+ 
+     // Calibration checkbox
+     {
+@@ -1929,41 +1935,50 @@ void CrealityPrintHostSendDialog::init()
+     // Query printer for loaded materials
+     {
+         wxBusyCursor wait;
+-        std::string boxes_json = creality_host->query_boxes_info();
+-        if (!boxes_json.empty()) {
+-            try {
+-                auto resp = nlohmann::json::parse(boxes_json);
+-                if (resp.contains("boxsInfo") && resp["boxsInfo"].contains("materialBoxs")) {
+-                    for (auto& box : resp["boxsInfo"]["materialBoxs"]) {
+-                        int box_id = box["id"].get<int>();
+-                        int box_type = box.value("type", 0);
+-                        // Skip inactive CFS boxes (type 0 with state != 1)
+-                        // Spool holder (type 1) is always available
+-                        if (box_type == 0 && box.value("state", 0) != 1)
+-                            continue;
+-                        for (auto& mat : box["materials"]) {
+-                            int slot_id = mat["id"].get<int>();
+-                            std::string tool_id = "T" + std::to_string(box_id) + std::string(1, 'A' + slot_id);
+-                            // Creality uses "#0RRGGBB" (7 hex digits), normalize to "#RRGGBB"
+-                            std::string color = mat.value("color", "#FFFFFF");
+-                            if (color.size() == 8 && color[0] == '#')
+-                                color = "#" + color.substr(2);
+-                            m_printer_slots.push_back({
+-                                tool_id,
+-                                mat.value("type", ""),
+-                                color,
+-                                box_id,
+-                                slot_id
+-                            });
+-                        }
+-                    }
+-                }
+-            } catch (const nlohmann::json::exception& e) {
+-                BOOST_LOG_TRIVIAL(error) << "CrealityPrint dialog: Failed to parse boxsInfo: " << e.what();
+-            }
++        for (const auto& slot : creality_host->query_cfs_slots(true)) {
++            m_printer_slots.push_back({
++                slot.tool_id,
++                slot.type,
++                slot.color,
++                slot.box_id,
++                slot.material_id
++            });
+         }
+     }
+ 
++    int cfs_slot_count = 0;
++    m_external_slot_index = -1;
++    for (int s = 0; s < (int)m_printer_slots.size(); s++) {
++        if (m_printer_slots[s].box_id == 0)
++            m_external_slot_index = s;
++        else
++            cfs_slot_count++;
++    }
++    if (m_external_slot_index < 0)
++        m_useExternalSpool = false;
++    if (cfs_slot_count == 0 && m_external_slot_index >= 0)
++        m_useExternalSpool = true;
++
++    wxRadioButton* cfs_radio = nullptr;
++    wxRadioButton* ext_radio = nullptr;
++    if (m_external_slot_index >= 0) {
++        auto* device_sizer = new wxBoxSizer(wxHORIZONTAL);
++        auto* device_label = new wxStaticText(this, wxID_ANY, _L("Filament Device"));
++        device_label->SetFont(::Label::Body_13);
++        device_label->SetForegroundColour(StateColor::darkModeColorFor(wxColour("#323A3D")));
++        device_sizer->Add(device_label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(10));
++
++        cfs_radio = new wxRadioButton(this, wxID_ANY, _L("CFS"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP);
++        ext_radio = new wxRadioButton(this, wxID_ANY, _L("Spool Holder"));
++        cfs_radio->SetValue(!m_useExternalSpool);
++        ext_radio->SetValue(m_useExternalSpool);
++        cfs_radio->Enable(cfs_slot_count > 0);
++        device_sizer->Add(cfs_radio, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(12));
++        device_sizer->Add(ext_radio, 0, wxALIGN_CENTER_VERTICAL);
++        group_sizer->Add(device_sizer);
++        group_sizer->AddSpacer(VERT_SPACING);
++    }
++
+     if (gcode_filament_count > 0 && !m_printer_slots.empty()) {
+         auto* label = new wxStaticText(this, wxID_ANY, _L("Filament Mapping:"));
+         label->SetFont(::Label::Body_13);
+@@ -1987,7 +2002,7 @@ void CrealityPrintHostSendDialog::init()
+             row_sizer->Add(color_panel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(4));
+ 
+             auto* type_label = new wxStaticText(this, wxID_ANY,
+-                wxString::Format("%d (%s)", i + 1, gc_type.c_str()));
++                wxString::Format("%d", i + 1) + wxString(" (") + from_u8(gc_type) + wxString(")"));
+             type_label->SetFont(::Label::Body_13);
+             type_label->SetForegroundColour(StateColor::darkModeColorFor(wxColour("#323A3D")));
+             type_label->SetMinSize(wxSize(FromDIP(80), -1));
+@@ -2004,15 +2019,32 @@ void CrealityPrintHostSendDialog::init()
+             for (auto& slot : m_printer_slots) {
+                 wxBitmap* bmp = get_extruder_color_icon(slot.color, "", icon_sz, icon_sz);
+                 wxString label_str;
+-                if (slot.box_id == 0)
+-                    label_str = wxString::Format("Ext - %s", slot.type.c_str());
+-                else
+-                    label_str = wxString::Format("%s - %s", slot.tool_id.substr(1).c_str(), slot.type.c_str());
++                if (slot.box_id == 0) {
++                    label_str = _L("Ext");
++                    if (!slot.type.empty())
++                        label_str += wxString(" - ") + from_u8(slot.type);
++                } else {
++                    label_str = from_u8(slot.tool_id.size() > 1 ? slot.tool_id.substr(1) : slot.tool_id);
++                    if (!slot.type.empty())
++                        label_str += wxString(" - ") + from_u8(slot.type);
++                }
+                 combo->Append(label_str, bmp ? *bmp : wxNullBitmap);
+             }
+             // Find best default: CFS exact color+type, CFS type-only,
+             // Ext exact, Ext type-only, else positional
+-            int default_sel = (i < (int)m_printer_slots.size()) ? i : 0;
++            int default_sel = 0;
++            int cfs_seen = 0;
++            for (int s = 0; s < (int)m_printer_slots.size(); s++) {
++                if (m_printer_slots[s].box_id == 0)
++                    continue;
++                if (cfs_seen == 0)
++                    default_sel = s;
++                if (cfs_seen == i) {
++                    default_sel = s;
++                    break;
++                }
++                cfs_seen++;
++            }
+             bool matched = false;
+             for (int pass = 0; pass < 4 && !matched; pass++) {
+                 for (int s = 0; s < (int)m_printer_slots.size(); s++) {
+@@ -2041,14 +2073,27 @@ void CrealityPrintHostSendDialog::init()
+             m_slot_combos.push_back(combo);
+         }
+ 
+-        int ext_slot_idx = -1;
+-        for (int s = 0; s < (int)m_printer_slots.size(); s++) {
+-            if (m_printer_slots[s].box_id == 0) {
+-                ext_slot_idx = s;
+-                break;
++        auto apply_filament_device = [this, cfs_radio, ext_radio]() {
++            if (ext_radio)
++                m_useExternalSpool = ext_radio->GetValue();
++            AppConfig* ac = wxGetApp().app_config;
++            ac->set("recent", CONFIG_KEY_USE_EXTERNAL_SPOOL, m_useExternalSpool ? "1" : "0");
++
++            if (m_useExternalSpool && m_external_slot_index >= 0 && !m_slot_combos.empty()) {
++                m_slot_combos.front()->SetSelection(m_external_slot_index);
++                for (size_t i = 0; i < m_slot_combos.size(); i++)
++                    m_slot_combos[i]->Enable(i == 0);
++            } else {
++                for (auto* combo : m_slot_combos)
++                    combo->Enable(true);
+             }
+-        }
+-        if (ext_slot_idx >= 0) {
++            if (cfs_radio)
++                cfs_radio->SetValue(!m_useExternalSpool);
++            if (ext_radio)
++                ext_radio->SetValue(m_useExternalSpool);
++        };
++
++        if (m_external_slot_index >= 0) {
+             for (int ci = 0; ci < (int)m_slot_combos.size(); ci++) {
+                 int sel = m_slot_combos[ci]->GetSelection();
+                 if (sel >= 0 && sel < (int)m_printer_slots.size() &&
+@@ -2062,22 +2107,43 @@ void CrealityPrintHostSendDialog::init()
+             }
+ 
+             for (auto* c : m_slot_combos) {
+-                c->Bind(wxEVT_COMBOBOX, [this, ext_slot_idx](wxCommandEvent& e) {
++                c->Bind(wxEVT_COMBOBOX, [this, cfs_radio, ext_radio, apply_filament_device](wxCommandEvent& e) {
+                     int sel = e.GetSelection();
+                     if (sel >= 0 && sel < (int)m_printer_slots.size() &&
+                         m_printer_slots[sel].box_id == 0) {
+-                        for (auto* c2 : m_slot_combos) {
+-                            if (c2 != e.GetEventObject())
+-                                c2->Enable(false);
+-                        }
++                        m_useExternalSpool = true;
++                        apply_filament_device();
+                     } else {
++                        m_useExternalSpool = false;
++                        AppConfig* ac = wxGetApp().app_config;
++                        ac->set("recent", CONFIG_KEY_USE_EXTERNAL_SPOOL, "0");
+                         for (auto* c2 : m_slot_combos)
+                             c2->Enable(true);
++                        if (cfs_radio)
++                            cfs_radio->SetValue(true);
++                        if (ext_radio)
++                            ext_radio->SetValue(false);
+                     }
+                     e.Skip();
+                 });
+             }
++            if (cfs_radio)
++                cfs_radio->Bind(wxEVT_RADIOBUTTON, [apply_filament_device](wxCommandEvent& e) {
++                    apply_filament_device();
++                    e.Skip();
++                });
++            if (ext_radio)
++                ext_radio->Bind(wxEVT_RADIOBUTTON, [apply_filament_device](wxCommandEvent& e) {
++                    apply_filament_device();
++                    e.Skip();
++                });
++            apply_filament_device();
+         }
++    } else if (gcode_filament_count > 0) {
++        auto* warning = new wxStaticText(this, wxID_ANY, _L("CFS slots could not be read. Upload only is still available."));
++        warning->SetFont(::Label::Body_13);
++        warning->SetForegroundColour(StateColor::darkModeColorFor(wxColour("#323A3D")));
++        group_sizer->Add(warning);
+     }
+ 
+     this->Layout();
+@@ -2090,12 +2156,20 @@ std::map<std::string, std::string> CrealityPrintHostSendDialog::extendedInfo() c
+     info["enableSelfTest"] = m_enableSelfTest ? "1" : "0";
+ 
+     // Color mapping: colorMatch_0, colorMatch_1, ... tab-delimited
++    if (m_useExternalSpool && m_external_slot_index >= 0 && m_external_slot_index < (int)m_printer_slots.size()) {
++        const auto& slot = m_printer_slots[m_external_slot_index];
++        info["colorMatch_0"] =
++            std::string("T1A") + "\t" + slot.type + "\t" + slot.color + "\t" +
++            std::to_string(slot.box_id) + "\t" + std::to_string(slot.material_id);
++        return info;
++    }
++
+     for (int i = 0; i < (int)m_slot_combos.size(); i++) {
+         int sel = m_slot_combos[i]->GetSelection();
+         if (sel >= 0 && sel < (int)m_printer_slots.size()) {
+             auto& slot = m_printer_slots[sel];
+             // id = gcode tool index (T1A for first filament, T1B for second, ...),
+-            // not the destination CFS slot — firmware matches by gcode tool.
++            // not the destination CFS slot; firmware matches by gcode tool.
+             std::string gcode_tool = "T1" + std::string(1, 'A' + i);
+             info["colorMatch_" + std::to_string(i)] =
+                 gcode_tool + "\t" + slot.type + "\t" + slot.color + "\t" +
+diff --git a/src/slic3r/GUI/PrintHostDialogs.hpp b/src/slic3r/GUI/PrintHostDialogs.hpp
+index 988d4c8171..f37523f460 100644
+--- a/src/slic3r/GUI/PrintHostDialogs.hpp
++++ b/src/slic3r/GUI/PrintHostDialogs.hpp
+@@ -200,23 +200,26 @@ public:
+                                 PrintHost*                     printhost);
+ 
+     virtual void                               init() override;
+-    virtual std::map<std::string, std::string> extendedInfo() const;
++    virtual std::map<std::string, std::string> extendedInfo() const override;
+ 
+ private:
+-    static constexpr const char* CONFIG_KEY_ENABLESELFTEST = "crealityprint_enable_self_test";
++    struct PrinterSlot {
++        std::string tool_id;
++        std::string type;
++        std::string color;
++        int         box_id = 0;
++        int         material_id = 0;
++    };
+ 
+-    bool        m_enableSelfTest;
+-    PrintHost*  m_printhost;
++    const char* CONFIG_KEY_ENABLESELFTEST = "crealityprint_enable_self_test";
++    const char* CONFIG_KEY_USE_EXTERNAL_SPOOL = "crealityprint_use_external_spool";
+ 
+-    struct SlotInfo {
+-        std::string tool_id;   // e.g. "T1A"
+-        std::string type;      // e.g. "PLA"
+-        std::string color;     // e.g. "#ffffff"
+-        int         box_id;
+-        int         material_id;
+-    };
+-    std::vector<SlotInfo>   m_printer_slots;
+-    std::vector<BitmapComboBox*> m_slot_combos; // one per gcode filament
++    bool m_enableSelfTest {false};
++    bool m_useExternalSpool {false};
++    int  m_external_slot_index {-1};
++    PrintHost* m_printhost {nullptr};
++    std::vector<PrinterSlot> m_printer_slots;
++    std::vector<BitmapComboBox*> m_slot_combos;
+ };
+ 
+ class FlashforgePrintHostSendDialog : public PrintHostSendDialog
+@@ -285,4 +288,4 @@ wxDECLARE_EVENT(EVT_PRINTHOST_CANCEL, PrintHostQueueDialog::Event);
+ wxDECLARE_EVENT(EVT_PRINTHOST_INFO, PrintHostQueueDialog::Event);
+ }}
+ 
+-#endif
++#endif
+\ No newline at end of file
+diff --git a/src/slic3r/GUI/PrinterWebView.cpp b/src/slic3r/GUI/PrinterWebView.cpp
+index 0d6c0bcedf..8faa5992f8 100644
+--- a/src/slic3r/GUI/PrinterWebView.cpp
++++ b/src/slic3r/GUI/PrinterWebView.cpp
+@@ -1,19 +1,37 @@
+ #include "PrinterWebView.hpp"
+ 
+-#include "I18N.hpp"
+ #include "PrinterWebViewHandler.hpp"
+-#include "slic3r/GUI/PrinterWebView.hpp"
+-#include "slic3r/GUI/wxExtensions.hpp"
++#include "libslic3r/PresetBundle.hpp"
++#include "libslic3r/PrintConfig.hpp"
++#include "libslic3r/Utils.hpp"
++#include "libslic3r_version.h"
+ #include "slic3r/GUI/GUI_App.hpp"
+ #include "slic3r/GUI/MainFrame.hpp"
+-#include "libslic3r_version.h"
++#include "slic3r/GUI/Widgets/WebView.hpp"
++#include "slic3r/GUI/wxExtensions.hpp"
++#include "slic3r/Utils/Http.hpp"
+ 
+-#include <boost/filesystem/path.hpp>
++#include <boost/algorithm/string/predicate.hpp>
++#include <boost/algorithm/string/replace.hpp>
++#include <boost/filesystem.hpp>
++#include <boost/optional.hpp>
++#include <boost/format.hpp>
++#include <boost/log/trivial.hpp>
++#include <cctype>
++#include <fstream>
++#include <map>
++#include <nlohmann/json.hpp>
++#include <thread>
++#include <vector>
++#include <wx/dirdlg.h>
++#include <wx/filedlg.h>
++#include <wx/msgdlg.h>
+ #include <wx/sizer.h>
++#include <wx/stdpaths.h>
+ #include <wx/string.h>
+ #include <wx/toolbar.h>
+-
+-#include <slic3r/GUI/Widgets/WebView.hpp>
++#include <wx/uri.h>
++#include <wx/utils.h>
+ #include <wx/webview.h>
+ 
+ #ifdef __linux__
+@@ -23,94 +41,214 @@
+ namespace Slic3r {
+ namespace GUI {
+ 
+-#ifdef __linux__
+-// Workaround for #7210: WebKitGTK crashes on vue-resize's hidden <object> probe used by
+-// older Fluidd/Mainsail pages. Swap that <object> for a <div> shim at appendChild time
+-// and bridge resize events through a fake contentDocument.defaultView so vue-resize keeps
+-// working. Workaround proposed by @VittC.
+-static void inject_vue_resize_workaround(wxWebView *webView)
+-{
+-    webView->AddUserScript(
+-        "(function() {"
+-        "  'use strict';"
+-        "  function isVueResizeObject(el) {"
+-        "    return el && el.tagName === 'OBJECT'"
+-        "        && el.type === 'text/html'"
+-        "        && el.getAttribute('aria-hidden') === 'true'"
+-        "        && el.getAttribute('tabindex') === '-1';"
+-        "  }"
+-        "  function isResizeObserverParent(p) {"
+-        "    return p && p.classList && p.classList.contains('resize-observer');"
+-        "  }"
+-        "  function makeShim(orig, parentForRO) {"
+-        "    var shim = document.createElement('div');"
+-        "    shim.setAttribute('aria-hidden', 'true');"
+-        "    shim.setAttribute('tabindex', '-1');"
+-        "    shim.style.display = 'none';"
+-        "    var fakeWin = document.createElement('div');"
+-        "    var ro = null;"
+-        "    var origRemoveEL = fakeWin.removeEventListener.bind(fakeWin);"
+-        "    fakeWin.removeEventListener = function(type, fn, opts) {"
+-        "      origRemoveEL(type, fn, opts);"
+-        "      if (type === 'resize' && ro) { ro.disconnect(); ro = null; }"
+-        "    };"
+-        "    Object.defineProperty(shim, 'contentDocument', {"
+-        "      configurable: true,"
+-        "      get: function() { return { defaultView: fakeWin }; }"
+-        "    });"
+-        "    Object.defineProperty(shim, 'contentWindow', {"
+-        "      configurable: true,"
+-        "      get: function() { return fakeWin; }"
+-        "    });"
+-        "    if (typeof orig.onload === 'function') { shim.onload = orig.onload; }"
+-        "    queueMicrotask(function() {"
+-        "      if (parentForRO && typeof ResizeObserver !== 'undefined') {"
+-        "        ro = new ResizeObserver(function() {"
+-        "          fakeWin.dispatchEvent(new Event('resize'));"
+-        "        });"
+-        "        ro.observe(parentForRO);"
+-        "      }"
+-        "      if (typeof shim.onload === 'function') {"
+-        "        try { shim.onload(new Event('load')); } catch (e) {}"
+-        "      }"
+-        "      shim.dispatchEvent(new Event('load'));"
+-        "    });"
+-        "    return shim;"
+-        "  }"
+-        "  var origAppend = Node.prototype.appendChild;"
+-        "  Node.prototype.appendChild = function(child) {"
+-        "    if (isResizeObserverParent(this) && isVueResizeObject(child)) {"
+-        "      return origAppend.call(this, makeShim(child, this));"
+-        "    }"
+-        "    return origAppend.call(this, child);"
+-        "  };"
+-        "  var origInsertBefore = Node.prototype.insertBefore;"
+-        "  Node.prototype.insertBefore = function(child, ref) {"
+-        "    if (isResizeObserverParent(this) && isVueResizeObject(child)) {"
+-        "      return origInsertBefore.call(this, makeShim(child, this), ref);"
+-        "    }"
+-        "    return origInsertBefore.call(this, child, ref);"
+-        "  };"
+-        "  console.log('[vr-fix] vue-resize WebKitGTK patch active');"
+-        "})();",
+-        wxWEBVIEW_INJECT_AT_DOCUMENT_START
+-    );
++namespace {
++
++using json = nlohmann::json;
++
++struct CrealityDownloadItem
++{
++    std::string filename;
++    std::string url;
++};
++
++std::string json_string_value(const json& obj, const char* key, const std::string& fallback = {})
++{
++    auto it = obj.find(key);
++    return it != obj.end() && it->is_string() ? it->get<std::string>() : fallback;
++}
++
++std::string creality_model_name(const std::string& model)
++{
++    static const std::map<std::string, std::string> names = {
++        {"F008", "K2 Plus"},
++        {"F012", "K2 Pro"},
++        {"F018", "Creality Hi"},
++        {"F021", "K2"},
++    };
++    auto it = names.find(model);
++    return it != names.end() ? it->second : model;
++}
++
++std::string host_address_from_config(const DynamicPrintConfig& cfg)
++{
++    std::string host = cfg.opt_string("print_host");
++    if (host.empty())
++        host = cfg.opt_string("print_host_webui");
++
++    std::string address = host;
++    size_t scheme = address.find("://");
++    if (scheme != std::string::npos)
++        address = address.substr(scheme + 3);
++    size_t path = address.find('/');
++    if (path != std::string::npos)
++        address = address.substr(0, path);
++    return address.empty() ? host : address;
++}
++
++std::string make_info_url(const std::string& address)
++{
++    if (boost::algorithm::starts_with(address, "http://") ||
++        boost::algorithm::starts_with(address, "https://"))
++        return address + (boost::algorithm::ends_with(address, "/") ? "info" : "/info");
++    return "http://" + address + "/info";
++}
++
++std::string make_moonraker_url(const std::string& address, const std::string& path)
++{
++    std::string host = address;
++    size_t scheme = host.find("://");
++    if (scheme != std::string::npos)
++        host = host.substr(scheme + 3);
++    size_t slash = host.find('/');
++    if (slash != std::string::npos)
++        host = host.substr(0, slash);
++    size_t colon = host.find(':');
++    if (colon != std::string::npos)
++        host = host.substr(0, colon);
++
++    std::string normalized_path = path;
++    if (normalized_path.empty() || normalized_path.front() != '/')
++        normalized_path = "/" + normalized_path;
++    return "http://" + host + ":7125" + normalized_path;
++}
++
++wxString file_url_for_path(const boost::filesystem::path& path)
++{
++    wxString url = wxString::FromUTF8(path.string());
++    url.Replace("\\", "/");
++    url.Replace("#", "%23");
++    url = wxURI(url).BuildURI();
++    return "file://" + url;
++}
++
++std::string creality_download_default_dir()
++{
++    std::string configured = wxGetApp().app_config ? wxGetApp().app_config->get("download_path") : "";
++    if (!configured.empty() && boost::filesystem::exists(configured))
++        return configured;
++    return wxStandardPaths::Get().GetUserDir(wxStandardPaths::Dir_Downloads).ToUTF8().data();
++}
++
++std::string creality_safe_export_filename(std::string filename)
++{
++    if (filename.empty())
++        filename = "creality-export";
++
++    for (char& c : filename) {
++        if (c == '<' || c == '>' || c == ':' || c == '"' || c == '/' || c == '\\' ||
++            c == '|' || c == '?' || c == '*' || static_cast<unsigned char>(c) < 32)
++            c = '_';
++    }
++
++    while (!filename.empty() && (filename.back() == '.' || filename.back() == ' '))
++        filename.pop_back();
++    return filename.empty() ? "creality-export" : filename;
+ }
++
++std::string creality_filename_from_url(const std::string& url)
++{
++    std::string path = url;
++    size_t query = path.find_first_of("?#");
++    if (query != std::string::npos)
++        path = path.substr(0, query);
++    size_t slash = path.find_last_of('/');
++    if (slash != std::string::npos)
++        path = path.substr(slash + 1);
++    return creality_safe_export_filename(Http::url_decode(path));
++}
++
++std::vector<CrealityDownloadItem> creality_download_items_from_message(const json& message)
++{
++    std::vector<CrealityDownloadItem> items;
++    auto it = message.find("urls");
++    if (it == message.end())
++        return items;
++
++    if (it->is_string()) {
++        std::string url = it->get<std::string>();
++        items.push_back({creality_filename_from_url(url), url});
++    } else if (it->is_object()) {
++        for (const auto& item : it->items()) {
++            if (item.value().is_string()) {
++                std::string url = item.value().get<std::string>();
++                std::string filename = creality_safe_export_filename(Http::url_decode(item.key()));
++                if (filename.empty())
++                    filename = creality_filename_from_url(url);
++                items.push_back({filename, url});
++            }
++        }
++    } else if (it->is_array()) {
++        for (const json& value : *it) {
++            if (value.is_string()) {
++                std::string url = value.get<std::string>();
++                items.push_back({creality_filename_from_url(url), url});
++            }
++        }
++    }
++
++    return items;
++}
++
++bool creality_download_url_to_file(const CrealityDownloadItem& item, const boost::filesystem::path& target, std::string& error)
++{
++    bool ok = false;
++    std::string body;
++    unsigned status = 0;
++
++    Http::get(item.url)
++        .timeout_connect(5)
++        .timeout_max(300)
++        .size_limit(1024ull * 1024ull * 1024ull)
++        .on_complete([&](std::string response, unsigned http_status) {
++            body = std::move(response);
++            status = http_status;
++            ok = http_status >= 200 && http_status < 300;
++        })
++        .on_error([&](std::string response, std::string err, unsigned http_status) {
++            body = std::move(response);
++            status = http_status;
++            error = err.empty() ? (boost::format("HTTP %1%") % http_status).str() : err;
++        })
++#ifdef WIN32
++        .ssl_revoke_best_effort(true)
+ #endif
++        .perform_sync();
++
++    if (!ok) {
++        if (error.empty())
++            error = (boost::format("HTTP %1%") % status).str();
++        return false;
++    }
++
++    boost::filesystem::create_directories(target.parent_path());
++    std::ofstream out(target.string(), std::ios::out | std::ios::binary);
++    out.write(body.data(), static_cast<std::streamsize>(body.size()));
++    if (!out.good()) {
++        error = "Could not write exported file.";
++        return false;
++    }
++    return true;
++}
++
++std::string sanitized_device_suffix(std::string value)
++{
++    boost::algorithm::replace_all(value, ":", "");
++    boost::algorithm::replace_all(value, "-", "");
++    boost::algorithm::replace_all(value, ".", "");
++    if (value.size() > 4)
++        return value.substr(value.size() - 4);
++    return value;
++}
++
++} // anonymous namespace
+ 
+ PrinterWebView::PrinterWebView(wxWindow *parent)
+-        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
+-    , m_browser(nullptr)
+-    , m_zoomFactor(100)
+-    , m_apikey()
+-    , m_apikey_sent(false)
+-    , m_url_deferred()
++    : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
+     , m_handler(std::make_unique<PrinterWebViewHandler>(*this))
+- {
+-
++    , m_creality_camera_keepalive_timer(this)
++{
+     wxBoxSizer* topsizer = new wxBoxSizer(wxVERTICAL);
+ 
+-      // Create the webview
+     m_browser = WebView::CreateWebView(this, "");
+     if (m_browser == nullptr) {
+         wxLogError("Could not init m_browser");
+@@ -118,8 +256,6 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
+     }
+ 
+ #ifdef __linux__
+-    inject_vue_resize_workaround(m_browser);
+-
+     auto cookiesPath = boost::filesystem::path(data_dir() + "/cache/cookies.db");
+     auto wv = static_cast<WebKitWebView*>(m_browser->GetNativeBackend());
+     auto wv_ctx = webkit_web_view_get_context(wv);
+@@ -128,65 +264,816 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
+ #endif
+ 
+     m_browser->Bind(wxEVT_WEBVIEW_ERROR, &PrinterWebView::OnError, this);
++    m_browser->Bind(wxEVT_WEBVIEW_NAVIGATING, &PrinterWebView::OnNavigating, this);
+     m_browser->Bind(wxEVT_WEBVIEW_LOADED, &PrinterWebView::OnLoaded, this);
+     m_browser->Bind(wxEVT_WEBVIEW_NEWWINDOW, &PrinterWebView::OnNewWindow, this);
+-    m_browser->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &PrinterWebView::OnScriptMessage, this);
++    Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &PrinterWebView::OnScriptMessage, this, m_browser->GetId());
++    Bind(wxEVT_TIMER, &PrinterWebView::OnCrealityCameraKeepAlive, this, m_creality_camera_keepalive_timer.GetId());
+ 
+     SetSizer(topsizer);
+-
+     topsizer->Add(m_browser, wxSizerFlags().Expand().Proportion(1));
+ 
+     update_mode();
+-
+-    // Log backend information
+-    /* m_browser->GetUserAgent() may lead crash
+-    if (wxGetApp().get_mode() == comDevelop) {
+-        wxLogMessage(wxWebView::GetBackendVersionInfo().ToString());
+-        wxLogMessage("Backend: %s Version: %s", m_browser->GetClassInfo()->GetClassName(),
+-            wxWebView::GetBackendVersionInfo().ToString());
+-        wxLogMessage("User Agent: %s", m_browser->GetUserAgent());
+-    }
+-    */
+-
+-    //Connect the idle events
+     Bind(wxEVT_CLOSE_WINDOW, &PrinterWebView::OnClose, this);
+-
+- }
++}
+ 
+ PrinterWebView::~PrinterWebView()
+ {
+     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
++    m_creality_camera_keepalive_timer.Stop();
+     SetEvtHandlerEnabled(false);
+     m_handler.reset();
+-
+-    // Destroy the webview
+-    if(m_browser){
++    if (m_browser) {
+         m_browser->Destroy();
+         m_browser = nullptr;
+     }
++    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " End";
++}
+ 
++bool PrinterWebView::current_printer_is_creality_print() const
++{
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle)
++        return false;
+ 
+-    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " End";
++    const DynamicPrintConfig& cfg = preset_bundle->printers.get_edited_preset().config;
++    const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
++    return host_type_opt && host_type_opt->value == htCrealityPrint &&
++           cfg.has("print_host") && !cfg.opt_string("print_host").empty();
++}
++
++wxString PrinterWebView::creality_device_page_url() const
++{
++    boost::filesystem::path index = boost::filesystem::path(resources_dir()) / "web" / "deviceMgr" / "index.html";
++    if (!boost::filesystem::exists(index))
++        return {};
++
++    std::string os = wxGetOsDescription().ToStdString();
++    std::string query = "?version=" + wxGetApp().url_encode(SLIC3R_VERSION) +
++                        "&port=0&os=" + wxGetApp().url_encode(os) +
++                        "&customized=0";
++    return file_url_for_path(index) + wxString::FromUTF8(query);
++}
++
++wxString PrinterWebView::resolve_url_for_current_printer(const wxString& requested_url)
++{
++    m_creality_device_page_active = current_printer_is_creality_print();
++    m_creality_init_sent = false;
++
++    if (!m_creality_device_page_active) {
++        m_creality_camera_keepalive_timer.Stop();
++        return requested_url;
++    }
++
++    wxString url = creality_device_page_url();
++    if (url.empty()) {
++        BOOST_LOG_TRIVIAL(error) << "Creality device page assets are missing; falling back to configured printer web UI.";
++        m_creality_device_page_active = false;
++        m_creality_camera_keepalive_timer.Stop();
++        return requested_url;
++    }
++
++    return url;
++}
++
++json PrinterWebView::query_creality_info(const std::string& address) const
++{
++    json info = json::object();
++    if (address.empty())
++        return info;
++
++    std::string url = make_info_url(address);
++    Http::get(url)
++        .timeout_max(1)
++        .on_complete([&](std::string body, unsigned) {
++            try {
++                info = json::parse(body);
++            } catch (const std::exception& e) {
++                BOOST_LOG_TRIVIAL(warning) << "Creality device /info parse failed: " << e.what();
++            }
++        })
++        .on_error([&](std::string body, std::string error, unsigned status) {
++            BOOST_LOG_TRIVIAL(warning) << "Creality device /info failed: HTTP " << status << " " << error << " " << body;
++        })
++#ifdef WIN32
++        .ssl_revoke_best_effort(true)
++#endif
++        .perform_sync();
++    return info;
++}
++
++json PrinterWebView::build_creality_device_data() const
++{
++    json root = json::object();
++    json groups = json::array();
++    json group = json::object();
++    json list = json::array();
++
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle)
++        return root;
++
++    const auto& preset = preset_bundle->printers.get_edited_preset();
++    const DynamicPrintConfig& cfg = preset.config;
++    std::string address = host_address_from_config(cfg);
++    json info = query_creality_info(address);
++
++    std::string model = json_string_value(info, "model", "F018");
++    std::string mac = json_string_value(info, "mac");
++    if (mac.empty())
++        mac = "ORCA_" + sanitized_device_suffix(address);
++
++    std::string display_name = creality_model_name(model);
++    std::string suffix = sanitized_device_suffix(mac);
++    if (!suffix.empty())
++        display_name += "-" + suffix;
++    if (display_name.empty())
++        display_name = preset.name;
++
++    json device;
++    device["address"] = address;
++    device["mac"] = mac;
++    device["model"] = model;
++    device["name"] = display_name;
++    device["type"] = 3;
++    device["connectType"] = 3;
++    device["oldPrinter"] = false;
++    device["moonrakerPort"] = 0;
++    device["fluiddPort"] = 0;
++    device["mainsailPort"] = 0;
++    device["deviceType"] = 0;
++    device["online"] = true;
++    device["video"] = true;
++    device["webrtcSupport"] = 1;
++    device["machinePlatformMotionEnable"] = 1;
++    device["machine_LED_light_exist"] = 1;
++    device["auxiliary_fan"] = 0;
++    device["support_air_filtration"] = 0;
++    device["machine_ptc_exist"] = 0;
++    device["materialDetector1"] = 0;
++    device["data"] = json::object();
++
++    list.push_back(device);
++    group["group"] = "Current Printer";
++    group["list"] = list;
++    groups.push_back(group);
++
++    root["groups"] = groups;
++    root["current_device"] = {{"mac", mac}};
++    root["mergeState"] = false;
++    return root;
++}
++
++json PrinterWebView::load_creality_machine_list() const
++{
++    boost::filesystem::path file = boost::filesystem::path(resources_dir()) / "profiles" / "Creality" / "machineList.json";
++    if (boost::filesystem::exists(file)) {
++        try {
++            std::ifstream in(file.string(), std::ios::in | std::ios::binary);
++            json parsed = json::parse(in);
++            if (parsed.contains("printerList"))
++                return parsed["printerList"];
++        } catch (const std::exception& e) {
++            BOOST_LOG_TRIVIAL(warning) << "Failed to load Creality machineList.json: " << e.what();
++        }
++    }
++
++    return json::array({
++        {
++            {"engineVersion", "3.0.0"},
++            {"printerIntName", "F018"},
++            {"nozzleDiameter", json::array({"0.4"})},
++            {"name", "Creality Hi"},
++            {"type", 1},
++            {"xSize", 260},
++            {"ySize", 260},
++            {"zSize", 300},
++            {"seriesId", 77814183},
++            {"supMaterialType", json::array({"PLA", "ABS", "TPU", "PETG", "PLA-CF"})}
++        }
++    });
++}
++
++json PrinterWebView::current_creality_device_ref() const
++{
++    json data = build_creality_device_data();
++    if (data.contains("groups") && !data["groups"].empty() &&
++        data["groups"][0].contains("list") && !data["groups"][0]["list"].empty())
++        return data["groups"][0]["list"][0];
++    return json::object();
++}
++
++void PrinterWebView::send_creality_command(const std::string& command, const json& data)
++{
++    if (!m_browser || !m_creality_device_page_active)
++        return;
++
++    json command_json;
++    command_json["command"] = command;
++    command_json["data"] = data;
++
++    std::string encoded = wxGetApp().url_encode(command_json.dump(-1, ' ', true, json::error_handler_t::replace));
++    WebView::RunScript(m_browser, wxString::Format("window.handleStudioCmd('%s');", wxString::FromUTF8(encoded)));
++}
++
++void PrinterWebView::send_creality_capabilities()
++{
++    if (!m_browser)
++        return;
++
++    json device = current_creality_device_ref();
++    std::string address = json_string_value(device, "address");
++    if (address.empty())
++        return;
++
++    json response;
++    response["address"] = address;
++    response["direction"] = 1;
++    response["machine_LED_light_exist"] = 1;
++    response["auxiliary_fan"] = 0;
++    response["support_air_filtration"] = 0;
++    response["machine_ptc_exist"] = 0;
++    send_creality_command("req_device_move_direction", response);
++}
++void PrinterWebView::send_creality_initial_state()
++{
++    if (m_creality_init_sent)
++        return;
++
++    m_creality_init_sent = true;
++    json device_data = build_creality_device_data();
++    send_creality_command("init_device", device_data);
++    send_creality_capabilities();
++
++    auto send_delayed_creality_command = [this](const std::string& command, const json& data, int delay_ms) {
++        if (!m_browser || !m_creality_device_page_active)
++            return;
++        json command_json;
++        command_json["command"] = command;
++        command_json["data"] = data;
++        std::string encoded = wxGetApp().url_encode(command_json.dump(-1, ' ', true, json::error_handler_t::replace));
++        WebView::RunScript(m_browser, wxString::Format(
++            "setTimeout(function(){ if (window.handleStudioCmd) window.handleStudioCmd('%s'); }, %d);",
++            wxString::FromUTF8(encoded), delay_ms));
++    };
++
++    auto clear_delayed_loading_overlay = [this](int delay_ms) {
++        if (!m_browser || !m_creality_device_page_active)
++            return;
++
++        WebView::RunScript(m_browser, wxString::Format(R"JS(
++            setTimeout(function() {
++                try {
++                    document.querySelectorAll('.el-loading-mask').forEach(function(el) {
++                        var text = (el.textContent || '').trim();
++                        if (!text || text.indexOf('Loading') >= 0)
++                            el.remove();
++                    });
++                    if (document.body)
++                        document.body.style.overflow = '';
++                } catch (e) {}
++            }, %d);
++        )JS", delay_ms));
++    };
++
++    if (device_data.contains("groups") && !device_data["groups"].empty() &&
++        device_data["groups"][0].contains("list") && !device_data["groups"][0]["list"].empty()) {
++        const json& device = device_data["groups"][0]["list"][0];
++        std::string mac = json_string_value(device, "mac");
++        std::string address = json_string_value(device, "address");
++        std::string name = json_string_value(device, "name");
++        send_creality_command("set_current_device", json{{"device_id", mac}});
++        send_creality_command("forward_device_detail", json{{"ip", address}, {"name", name}});
++        send_delayed_creality_command("init_device", device_data, 350);
++        send_delayed_creality_command("set_current_device", json{{"device_id", mac}}, 550);
++        send_delayed_creality_command("forward_device_detail", json{{"ip", address}, {"name", name}}, 700);
++        send_delayed_creality_command("init_device", device_data, 1100);
++        send_delayed_creality_command("set_current_device", json{{"device_id", mac}}, 1300);
++        send_delayed_creality_command("forward_device_detail", json{{"ip", address}, {"name", name}}, 1500);
++        clear_delayed_loading_overlay(2200);
++    }
++    if (m_browser) {
++        m_browser->CallAfter([this]() {
++            if (m_creality_device_page_active) {
++                send_creality_capabilities();
++                json device = current_creality_device_ref();
++                send_creality_command("set_current_device", json{{"device_id", json_string_value(device, "mac")}});
++                send_creality_command("forward_device_detail", json{{"ip", json_string_value(device, "address")}, {"name", json_string_value(device, "name")}});
++            }
++        });
++    }
++    send_creality_command("get_lang", json(wxGetApp().app_config->get("language")));
++    send_creality_command("is_dark_theme", json(wxGetApp().dark_mode()));
++
++    json user;
++    user["bLogin"] = 0;
++    user["token"] = "";
++    user["userId"] = "";
++    user["region"] = wxGetApp().app_config->get("region");
++    user["pid"] = "";
++    send_creality_command("get_user", user);
++}
++
++boost::optional<bool> PrinterWebView::query_creality_logo_light_state() const
++{
++    json device = current_creality_device_ref();
++    std::string address = json_string_value(device, "address");
++    if (address.empty())
++        return boost::none;
++
++    json payload;
++    payload["objects"]["output_pin LED"] = json::array({"value"});
++
++    bool ok = false;
++    boost::optional<bool> state;
++    Http::post(make_moonraker_url(address, "/printer/objects/query"))
++        .header("Content-Type", "application/json")
++        .set_post_body(payload.dump())
++        .timeout_connect(2)
++        .timeout_max(4)
++        .on_complete([&](std::string body, unsigned status) {
++            if (status < 200 || status >= 300)
++                return;
++            try {
++                json response = json::parse(body);
++                const json& value = response["result"]["status"]["output_pin LED"]["value"];
++                if (value.is_number()) {
++                    state = value.get<double>() > 0.0;
++                    ok = true;
++                }
++            } catch (const std::exception& e) {
++                BOOST_LOG_TRIVIAL(warning) << "Creality logo light state parse failed: " << e.what();
++            }
++        })
++        .on_error([&](std::string, std::string err, unsigned status) {
++            BOOST_LOG_TRIVIAL(warning) << "Creality logo light state query failed: " << err << " HTTP " << status;
++        })
++        .perform_sync();
++
++    return ok ? state : boost::none;
++}
++
++bool PrinterWebView::set_creality_logo_light(bool on) const
++{
++    json device = current_creality_device_ref();
++    std::string address = json_string_value(device, "address");
++    if (address.empty())
++        return false;
++
++    json payload;
++    payload["script"] = std::string("SET_PIN PIN=LED VALUE=") + (on ? "1" : "0");
++
++    bool ok = false;
++    Http::post(make_moonraker_url(address, "/printer/gcode/script"))
++        .header("Content-Type", "application/json")
++        .set_post_body(payload.dump())
++        .timeout_connect(2)
++        .timeout_max(5)
++        .on_complete([&](std::string, unsigned status) {
++            ok = status >= 200 && status < 300;
++        })
++        .on_error([&](std::string, std::string err, unsigned status) {
++            BOOST_LOG_TRIVIAL(warning) << "Creality logo light command failed: " << err << " HTTP " << status;
++        })
++        .perform_sync();
++
++    return ok;
++}
++
++void PrinterWebView::inject_creality_logo_light_control()
++{
++    if (!m_browser || !m_creality_device_page_active)
++        return;
++
++    WebView::RunScript(m_browser, R"JS(
++        (function() {
++            function installLogoLight() {
++                if (document.getElementById("orca-logo-light-card"))
++                    return true;
++
++                const printSettingsTitle = Array.from(document.querySelectorAll("div,span,p,h1,h2,h3,h4"))
++                    .find((el) => (el.textContent || "").trim() === "Print Settings");
++                if (!printSettingsTitle)
++                    return false;
++
++                let root = printSettingsTitle.closest(".el-card, .card, section, [class*='card'], [class*='Card']");
++                if (!root)
++                    root = printSettingsTitle.parentElement && printSettingsTitle.parentElement.parentElement;
++                if (!root)
++                    return false;
++
++                let target = Array.from(root.querySelectorAll("div")).find((el) => {
++                    const text = (el.textContent || "").trim();
++                    const rect = el.getBoundingClientRect();
++                    return /LED/.test(text) && rect.width >= 70 && rect.width <= 260 && rect.height >= 60 && rect.height <= 190;
++                });
++                let parent = target && target.parentElement;
++                if (!parent)
++                    parent = root.querySelector("div") || root;
++
++                if (target) {
++                    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
++                    let node;
++                    while ((node = walker.nextNode())) {
++                        if (/LED\s*Li/i.test(node.nodeValue || "")) {
++                            node.nodeValue = (node.nodeValue || "").replace(/LED\s*Li(?:ght)?\.*/i, "LED");
++                            break;
++                        }
++                    }
++                }
++
++                const style = document.createElement("style");
++                style.id = "orca-logo-light-style";
++                style.textContent = `
++                    #orca-logo-light-card {
++                        width: 180px; min-height: 90px; padding: 18px 14px;
++                        background: #2b2b2d; border-radius: 4px; color: #fff;
++                        box-sizing: border-box; display: flex; flex-direction: column;
++                        justify-content: flex-start; gap: 12px; margin: 0 12px 12px 0;
++                        font-family: inherit;
++                    }
++                    #orca-logo-light-card .orca-logo-row {
++                        display: flex; align-items: center; justify-content: space-between; gap: 12px;
++                        font-size: 16px; line-height: 20px; white-space: nowrap;
++                    }
++                    #orca-logo-light-toggle {
++                        width: 40px; height: 20px; border-radius: 10px; border: 0; padding: 0;
++                        background: #42434a; position: relative; cursor: pointer; flex: 0 0 auto;
++                    }
++                    #orca-logo-light-toggle::after {
++                        content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%;
++                        left: 2px; top: 2px; background: #24252b; transition: left .15s, background .15s;
++                    }
++                    #orca-logo-light-toggle.orca-on { background: #1ecb65; }
++                    #orca-logo-light-toggle.orca-on::after { left: 22px; background: #e9fff1; }
++                    #orca-logo-light-status { color: #9da0aa; font-size: 13px; min-height: 16px; }
++                `;
++                if (!document.getElementById(style.id))
++                    document.head.appendChild(style);
++
++                const card = document.createElement("div");
++                card.id = "orca-logo-light-card";
++                card.innerHTML = '<div class="orca-logo-row"><span>Logo LED</span><button id="orca-logo-light-toggle" type="button" aria-label="Toggle logo LED"></button></div><div id="orca-logo-light-status">Ready</div>';
++
++                if (target && target.nextSibling)
++                    parent.insertBefore(card, target.nextSibling);
++                else
++                    parent.appendChild(card);
++
++                const button = document.getElementById("orca-logo-light-toggle");
++                const status = document.getElementById("orca-logo-light-status");
++                let current = false;
++
++                window.__orcaLogoLightSetState = function(on, text) {
++                    current = !!on;
++                    button.classList.toggle("orca-on", current);
++                    if (typeof text === "string")
++                        status.textContent = text;
++                };
++
++                button.addEventListener("click", function() {
++                    const next = !current;
++                    const previous = current;
++                    window.__orcaLogoLightSetState(next, "Sending...");
++                    const payload = JSON.stringify({
++                        command: "orca_set_logo_light",
++                        value: next ? 1 : 0
++                    });
++                    try {
++                        window.location.href = "orca-creality-logo:" + encodeURIComponent(payload);
++                    } catch (e) {
++                        window.__orcaLogoLightSetState(previous, "Failed");
++                    }
++                    setTimeout(function() {
++                        const status = document.getElementById("orca-logo-light-status");
++                        if (status && status.textContent === "Sending...")
++                            window.__orcaLogoLightSetState(previous, "Failed");
++                    }, 7000);
++                });
++                return true;
++            }
++
++            if (!installLogoLight()) {
++                let tries = 0;
++                const timer = setInterval(function() {
++                    tries += 1;
++                    if (installLogoLight() || tries > 30)
++                        clearInterval(timer);
++                }, 500);
++            }
++        })();
++    )JS");
++
++    json device = current_creality_device_ref();
++    std::string address = json_string_value(device, "address");
++    if (!address.empty()) {
++        std::thread([this, address]() {
++            bool ok = false;
++            bool on = false;
++            json payload;
++            payload["objects"]["output_pin LED"] = json::array({"value"});
++            Http::post(make_moonraker_url(address, "/printer/objects/query"))
++                .header("Content-Type", "application/json")
++                .set_post_body(payload.dump())
++                .timeout_connect(2)
++                .timeout_max(4)
++                .on_complete([&](std::string body, unsigned status) {
++                    if (status < 200 || status >= 300)
++                        return;
++                    try {
++                        json response = json::parse(body);
++                        const json& value = response["result"]["status"]["output_pin LED"]["value"];
++                        if (value.is_number()) {
++                            on = value.get<double>() > 0.0;
++                            ok = true;
++                        }
++                    } catch (const std::exception& e) {
++                        BOOST_LOG_TRIVIAL(warning) << "Creality logo light state parse failed: " << e.what();
++                    }
++                })
++                .on_error([&](std::string, std::string err, unsigned status) {
++                    BOOST_LOG_TRIVIAL(warning) << "Creality logo light state query failed: " << err << " HTTP " << status;
++                })
++                .perform_sync();
++
++            if (ok && m_browser) {
++                m_browser->CallAfter([this, on]() {
++                    if (!m_browser || !m_creality_device_page_active)
++                        return;
++                    WebView::RunScript(m_browser, wxString::Format(
++                        "(function(){var s=%s; if(window.__orcaLogoLightSetState) window.__orcaLogoLightSetState(s, 'Ready');"
++                        "setTimeout(function(){ if(window.__orcaLogoLightSetState) window.__orcaLogoLightSetState(s, 'Ready'); }, 1200);})();",
++                        on ? "true" : "false"));
++                });
++            }
++        }).detach();
++    }
++}
++
++void PrinterWebView::handle_creality_script_message(const json& message)
++{
++    std::string command = json_string_value(message, "command");
++    if (command.empty())
++        return;
++
++    if (command == "init_device") {
++        m_creality_init_sent = false;
++        send_creality_initial_state();
++    } else if (command == "request_all_device" || command == "get_devices") {
++        json data;
++        data["data"]["printerList"] = json::array();
++        data["data"]["currentActivePrinterMac"] = "";
++        json device_data = build_creality_device_data();
++        if (device_data.contains("groups")) {
++            data["data"]["printerList"] = device_data["groups"];
++            data["data"]["currentActivePrinterMac"] = device_data["current_device"]["mac"];
++        }
++        send_creality_command(command, data);
++    } else if (command == "get_lang") {
++        send_creality_command("get_lang", json(wxGetApp().app_config->get("language")));
++    } else if (command == "is_dark_theme") {
++        send_creality_command("is_dark_theme", json(wxGetApp().dark_mode()));
++    } else if (command == "get_user") {
++        json user;
++        user["bLogin"] = 0;
++        user["token"] = "";
++        user["userId"] = "";
++        user["region"] = wxGetApp().app_config->get("region");
++        user["pid"] = "";
++        send_creality_command("get_user", user);
++    } else if (command == "get_machine_list") {
++        send_creality_command("get_machine_list", load_creality_machine_list());
++    } else if (command == "get_device_merge_state") {
++        send_creality_command("get_device_merge_state", json(false));
++    } else if (command == "get_current_device") {
++        json device = current_creality_device_ref();
++        send_creality_command("get_current_device", json{{"mac", json_string_value(device, "mac")}});
++    } else if (command == "req_device_move_direction") {
++        json device = current_creality_device_ref();
++        json response;
++        response["address"] = message.value("address", json_string_value(device, "address"));
++        response["direction"] = 1;
++        response["machine_LED_light_exist"] = 1;
++        response["auxiliary_fan"] = 0;
++        response["support_air_filtration"] = 0;
++        response["machine_ptc_exist"] = 0;
++        send_creality_command("req_device_move_direction", response);
++    } else if (command == "get_webrtc_local_param") {
++        json response;
++        // The Creality device page already sends a base64 encoded WebRTC offer.
++        // Echo it back unchanged so the page's own local WebRTC handler can POST
++        // the exact payload to /call/webrtc_local, matching Creality Print.
++        response["sdp"] = message.value("sdp", "");
++        response["url"] = message.value("url", "");
++        if (message.contains("token"))
++            response["token"] = message["token"];
++        if (message.contains("videoEncryption"))
++            response["videoEncryption"] = message["videoEncryption"];
++        response["status"] = 0;
++        send_creality_command("get_webrtc_local_param", response);
++    } else if (command == "orca_camera_watchdog_reload") {
++        BOOST_LOG_TRIVIAL(info) << "Creality camera watchdog requested device page reload";
++        m_creality_init_sent = false;
++        if (m_browser)
++            m_browser->Reload();
++    } else if (command == "orca_set_logo_light") {
++        bool on = message.value("value", 0) != 0;
++        std::thread([this, on]() {
++            bool ok = set_creality_logo_light(on);
++            if (m_browser) {
++                m_browser->CallAfter([this, ok, on]() {
++                    if (!m_browser || !m_creality_device_page_active)
++                        return;
++                    WebView::RunScript(m_browser, wxString::Format(
++                        "window.__orcaLogoLightSetState && window.__orcaLogoLightSetState(%s, '%s');",
++                        on ? "true" : "false",
++                        ok ? "Ready" : "Failed"));
++                });
++            }
++        }).detach();
++    } else if (command == "get_region") {
++        send_creality_command("get_region", json(wxGetApp().app_config->get("region")));
++    } else if (command == "common_openurl" && message.contains("url") && message["url"].is_string()) {
++        wxLaunchDefaultBrowser(wxString::FromUTF8(message["url"].get<std::string>()));
++    } else if (command == "down_files") {
++        std::vector<CrealityDownloadItem> items = creality_download_items_from_message(message);
++        if (items.empty()) {
++            send_creality_command("update_download_progress", json(0));
++            return;
++        }
++
++        std::vector<std::pair<CrealityDownloadItem, boost::filesystem::path>> downloads;
++        std::string default_dir = creality_download_default_dir();
++        if (items.size() == 1) {
++            wxFileDialog dialog(
++                this,
++                _L("Export file"),
++                wxString::FromUTF8(default_dir),
++                wxString::FromUTF8(items.front().filename),
++                _L("All files (*.*)|*.*"),
++                wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
++            if (dialog.ShowModal() != wxID_OK) {
++                send_creality_command("update_download_progress", json(0));
++                return;
++            }
++            downloads.push_back({items.front(), boost::filesystem::path(dialog.GetPath().ToStdWstring())});
++        } else {
++            wxDirDialog dialog(
++                this,
++                _L("Choose export folder"),
++                wxString::FromUTF8(default_dir),
++                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
++            if (dialog.ShowModal() != wxID_OK) {
++                send_creality_command("update_download_progress", json(0));
++                return;
++            }
++            boost::filesystem::path folder(dialog.GetPath().ToStdWstring());
++            for (const CrealityDownloadItem& item : items)
++                downloads.push_back({item, folder / item.filename});
++        }
++
++        send_creality_command("update_download_progress", json(1));
++        std::thread([this, downloads = std::move(downloads)]() {
++            std::string last_error;
++            bool all_ok = true;
++            for (size_t i = 0; i < downloads.size(); ++i) {
++                std::string error;
++                bool ok = creality_download_url_to_file(downloads[i].first, downloads[i].second, error);
++                if (!ok) {
++                    all_ok = false;
++                    last_error = downloads[i].first.filename + ": " + error;
++                    BOOST_LOG_TRIVIAL(error) << "Creality export failed: " << last_error;
++                    break;
++                }
++                int progress = static_cast<int>(((i + 1) * 100) / downloads.size());
++                if (m_browser) {
++                    m_browser->CallAfter([this, progress]() {
++                        send_creality_command("update_download_progress", json(progress));
++                    });
++                }
++            }
++
++            if (m_browser) {
++                m_browser->CallAfter([this, all_ok, last_error]() {
++                    send_creality_command("update_download_progress", json(all_ok ? 100 : 0));
++                    if (!all_ok)
++                        wxMessageBox(wxString::FromUTF8(last_error), _L("Export failed"), wxOK | wxICON_ERROR, this);
++                });
++            }
++        }).detach();
++    } else if (command == "update_devices" || command == "set_current_device" ||
++               command == "add_device" || command == "update_device" ||
++               command == "viewDetialEvent" || command == "sync_mappinp_cfs_filament") {
++        BOOST_LOG_TRIVIAL(trace) << "Creality device page command handled locally: " << command;
++    } else {
++        BOOST_LOG_TRIVIAL(trace) << "Creality device page command not implemented in Orca bridge: " << command;
++    }
++}
++
++void PrinterWebView::OnScriptMessage(wxWebViewEvent& evt)
++{
++    try {
++        std::string input = evt.GetString().ToUTF8().data();
++        if (input.empty())
++            return;
++
++        json message;
++        try {
++            message = json::parse(input);
++        } catch (...) {
++            try {
++                message = json::parse(wxGetApp().url_decode(input));
++            } catch (...) {
++                if (!m_creality_device_page_active && m_handler) {
++                    m_handler->on_script_message(evt);
++                    return;
++                }
++                throw;
++            }
++        }
++
++        // Export/open-url commands may arrive from a still-visible Creality page
++        // after Orca has refreshed printer state and cleared the active flag.
++        // Keep those bridge commands alive so Local Files export never becomes a no-op.
++        std::string command = json_string_value(message, "command");
++        if (!m_creality_device_page_active &&
++            command != "down_files" &&
++            command != "common_openurl" &&
++            command != "orca_camera_watchdog_reload" &&
++            command != "orca_set_logo_light") {
++            if (m_handler)
++                m_handler->on_script_message(evt);
++            return;
++        }
++
++        handle_creality_script_message(message);
++    } catch (const std::exception& e) {
++        BOOST_LOG_TRIVIAL(warning) << "Creality device page script message failed: " << e.what();
++    }
++}
++
++void PrinterWebView::OnNavigating(wxWebViewEvent& evt)
++{
++    wxString url = evt.GetURL();
++    const wxString download_scheme = "orca-creality-download:";
++    const wxString logo_scheme = "orca-creality-logo:";
++    if (!url.StartsWith(download_scheme) && !url.StartsWith(logo_scheme))
++        return;
++
++    evt.Veto();
++    try {
++        wxString encoded = url.StartsWith(download_scheme) ? url.Mid(download_scheme.Length()) : url.Mid(logo_scheme.Length());
++        std::string payload = wxGetApp().url_decode(encoded.ToUTF8().data());
++        json message = json::parse(payload);
++        handle_creality_script_message(message);
++    } catch (const std::exception& e) {
++        BOOST_LOG_TRIVIAL(warning) << "Creality device page download navigation failed: " << e.what();
++    }
+ }
+ 
+ void PrinterWebView::load_url(wxString& url, wxString apikey)
+ {
+-//    this->Show();
+-//    this->Raise();
+     if (m_browser == nullptr)
+         return;
+-    m_apikey = apikey;
++
++    wxString final_url = resolve_url_for_current_printer(url);
++    m_apikey = m_creality_device_page_active ? wxString() : apikey;
+     m_apikey_sent = false;
+     m_handler = create_printer_webview_handler(*this);
++    if (m_creality_device_page_active) {
++        m_creality_init_sent = false;
++        m_browser->RemoveAllUserScripts();
++        m_browser->AddUserScript(R"JS(
++            (function() {
++                function patchWxBridge() {
++                    if (!window.wx || !window.wx.postMessage || window.wx.__orcaJsonBridge)
++                        return;
++                    const originalPostMessage = window.wx.postMessage.bind(window.wx);
++                    window.wx.postMessage = function(message) {
++                        if (typeof message !== "string") {
++                            try { message = JSON.stringify(message); }
++                            catch (e) { message = String(message); }
++                        }
++                        return originalPostMessage(message);
++                    };
++                    window.wx.__orcaJsonBridge = true;
++                }
++                patchWxBridge();
++                document.addEventListener("DOMContentLoaded", patchWxBridge);
++                setTimeout(patchWxBridge, 100);
++                setTimeout(patchWxBridge, 1000);
++            })();
++        )JS");
++    }
+ 
+     if (this->IsShown()) {
+-        //ORCA: m_url_deferred will be cleared on load success
+-        //m_url_deferred.clear();
+-        m_browser->LoadURL(url);
++        m_url_deferred.clear();
++        m_browser->LoadURL(final_url);
+     } else {
+-        m_url_deferred = url;
++        m_url_deferred = final_url;
+     }
+-    //m_browser->SetFocus();
++    if (!m_creality_device_page_active)
++        m_creality_camera_keepalive_timer.Stop();
+     UpdateState();
+ }
+ 
+@@ -194,43 +1081,151 @@ bool PrinterWebView::Show(bool show)
+ {
+     if (show && !m_url_deferred.empty()) {
+         m_browser->LoadURL(m_url_deferred);
+-        //ORCA: m_url_deferred will be cleared on load success
+-        //m_url_deferred.clear();
++        m_url_deferred.clear();
+     }
++    if (!show)
++        m_creality_camera_keepalive_timer.Stop();
++    else if (m_creality_device_page_active && !m_creality_camera_keepalive_timer.IsRunning())
++        m_creality_camera_keepalive_timer.Start(60000);
+     return wxPanel::Show(show);
+ }
+ 
+ void PrinterWebView::reload()
+ {
++    m_creality_init_sent = false;
+     m_browser->Reload();
+ }
+ 
++void PrinterWebView::resume_creality_page()
++{
++    if (!m_creality_device_page_active)
++        return;
++
++    send_creality_initial_state();
++    if (!m_creality_camera_keepalive_timer.IsRunning())
++        m_creality_camera_keepalive_timer.Start(60000);
++}
++
+ void PrinterWebView::update_mode()
+ {
+     m_browser->EnableAccessToDevTools(wxGetApp().app_config->get_bool("developer_mode"));
+ }
+ 
+-/**
+- * Method that retrieves the current state from the web control and updates the
+- * GUI the reflect this current state.
+- */
+-void PrinterWebView::UpdateState() {
+-  // SetTitle(m_browser->GetCurrentTitle());
+-
++void PrinterWebView::UpdateState()
++{
+ }
+ 
+ void PrinterWebView::OnClose(wxCloseEvent& evt)
+ {
++    m_creality_camera_keepalive_timer.Stop();
+     this->Hide();
+ }
+ 
++void PrinterWebView::OnCrealityCameraKeepAlive(wxTimerEvent& evt)
++{
++    if (!m_browser || !m_creality_device_page_active || !IsShownOnScreen())
++        return;
++
++    send_creality_capabilities();
++
++    WebView::RunScript(m_browser, R"JS(
++        (function() {
++            const now = Date.now();
++            const state = window.__orcaCrealityCameraWatch || (window.__orcaCrealityCameraWatch = {
++                lastChange: now,
++                signature: "",
++                reloads: 0,
++                lastHardReload: 0
++            });
++
++            const media = Array.from(document.querySelectorAll("video,img,iframe,canvas"));
++            const signature = media.map((el) => {
++                const tag = el.tagName;
++                if (tag === "VIDEO")
++                    return ["video", el.currentTime || 0, el.videoWidth || 0, el.videoHeight || 0, el.readyState || 0, el.paused ? 1 : 0].join(":");
++                if (tag === "IMG" || tag === "IFRAME")
++                    return [tag.toLowerCase(), el.src || ""].join(":");
++                return ["canvas", el.width || 0, el.height || 0].join(":");
++            }).join("|");
++
++            const loadingVisible = Array.from(document.querySelectorAll(".el-loading-mask,.spinner-wrapper")).some((el) => {
++                const rect = el.getBoundingClientRect();
++                const style = window.getComputedStyle(el);
++                return rect.width > 20 && rect.height > 20 && style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
++            });
++
++            if (signature && signature !== state.signature) {
++                state.signature = signature;
++                state.lastChange = now;
++                state.reloads = 0;
++                if (!loadingVisible) {
++                    document.querySelectorAll(".el-loading-mask").forEach((el) => {
++                        const text = (el.textContent || "").trim();
++                        if (!text || /Loading|Reconnecting/i.test(text))
++                            el.remove();
++                    });
++                }
++                return;
++            }
++
++            if (loadingVisible && now - state.lastChange > 25000 && now - state.lastHardReload > 60000) {
++                state.lastHardReload = now;
++                try {
++                    window.wx && window.wx.postMessage && window.wx.postMessage(JSON.stringify({command:"orca_camera_watchdog_reload"}));
++                } catch (e) {
++                    window.location.reload();
++                }
++                return;
++            }
++
++            if (now - state.lastChange < 60000)
++                return;
++
++            for (const video of document.querySelectorAll("video")) {
++                try {
++                    if (video.paused || video.readyState < 2)
++                        video.play().catch(() => {});
++                    else {
++                        video.pause();
++                        video.load();
++                        video.play().catch(() => {});
++                    }
++                } catch (e) {}
++            }
++
++            for (const el of document.querySelectorAll("img,iframe")) {
++                const src = el.src || "";
++                if (/camera|webrtc|video|stream|snapshot/i.test(src)) {
++                    const sep = src.indexOf("?") >= 0 ? "&" : "?";
++                    el.src = src.replace(/([?&])_orca_camera_keepalive=\d+/, "$1_orca_camera_keepalive=" + now);
++                    if (el.src === src)
++                        el.src = src + sep + "_orca_camera_keepalive=" + now;
++                }
++            }
++
++            state.lastChange = now;
++            state.reloads += 1;
++            if (state.reloads >= 2 && now - state.lastHardReload > 60000) {
++                state.lastHardReload = now;
++                try {
++                    window.wx && window.wx.postMessage && window.wx.postMessage(JSON.stringify({command:"orca_camera_watchdog_reload"}));
++                } catch (e) {
++                    window.location.reload();
++                }
++            }
++        })();
++    )JS");
++}
++
+ void PrinterWebView::SendAPIKey()
+ {
++    if (m_creality_device_page_active)
++        return;
+     if (m_apikey_sent || m_apikey.IsEmpty())
+         return;
+-    m_apikey_sent   = true;
++
++    m_apikey_sent = true;
+     wxString script = wxString::Format(R"(
+-    // Check if window.fetch exists before overriding
+     if (window.fetch) {
+         const originalFetch = window.fetch;
+         window.fetch = function(input, init = {}) {
+@@ -242,17 +1237,8 @@ void PrinterWebView::SendAPIKey()
+ )",
+                                        m_apikey);
+     m_browser->RemoveAllUserScripts();
+-    
+-    // RemoveAllUserScripts causes WebView to forget about our script message handler, 
+-    // so re-add it here.
+     m_browser->RemoveScriptMessageHandler("wx");
+     m_browser->AddScriptMessageHandler("wx");
+-
+-#ifdef __linux__
+-    // Re-inject the vue-resize/WebKitGTK workaround that RemoveAllUserScripts just cleared.
+-    inject_vue_resize_workaround(m_browser);
+-#endif
+-
+     m_browser->AddUserScript(script);
+     m_browser->Reload();
+ }
+@@ -261,62 +1247,44 @@ void PrinterWebView::OnError(wxWebViewEvent &evt)
+ {
+     auto e = "unknown error";
+     switch (evt.GetInt()) {
+-      case wxWEBVIEW_NAV_ERR_CONNECTION:
+-        e = "wxWEBVIEW_NAV_ERR_CONNECTION";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_CERTIFICATE:
+-        e = "wxWEBVIEW_NAV_ERR_CERTIFICATE";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_AUTH:
+-        e = "wxWEBVIEW_NAV_ERR_AUTH";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_SECURITY:
+-        e = "wxWEBVIEW_NAV_ERR_SECURITY";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_NOT_FOUND:
+-        e = "wxWEBVIEW_NAV_ERR_NOT_FOUND";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_REQUEST:
+-        e = "wxWEBVIEW_NAV_ERR_REQUEST";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_USER_CANCELLED:
+-        e = "wxWEBVIEW_NAV_ERR_USER_CANCELLED";
+-        break;
+-      case wxWEBVIEW_NAV_ERR_OTHER:
+-        e = "wxWEBVIEW_NAV_ERR_OTHER";
+-        break;
+-      }
+-    BOOST_LOG_TRIVIAL(info) << __FUNCTION__<< boost::format(": error loading page %1% %2% %3% %4%") %evt.GetURL() %evt.GetTarget() %e %evt.GetString();
+-}
+-
+-void PrinterWebView::OnLoaded(wxWebViewEvent& evt)
++    case wxWEBVIEW_NAV_ERR_CONNECTION: e = "wxWEBVIEW_NAV_ERR_CONNECTION"; break;
++    case wxWEBVIEW_NAV_ERR_CERTIFICATE: e = "wxWEBVIEW_NAV_ERR_CERTIFICATE"; break;
++    case wxWEBVIEW_NAV_ERR_AUTH: e = "wxWEBVIEW_NAV_ERR_AUTH"; break;
++    case wxWEBVIEW_NAV_ERR_SECURITY: e = "wxWEBVIEW_NAV_ERR_SECURITY"; break;
++    case wxWEBVIEW_NAV_ERR_NOT_FOUND: e = "wxWEBVIEW_NAV_ERR_NOT_FOUND"; break;
++    case wxWEBVIEW_NAV_ERR_REQUEST: e = "wxWEBVIEW_NAV_ERR_REQUEST"; break;
++    case wxWEBVIEW_NAV_ERR_USER_CANCELLED: e = "wxWEBVIEW_NAV_ERR_USER_CANCELLED"; break;
++    case wxWEBVIEW_NAV_ERR_OTHER: e = "wxWEBVIEW_NAV_ERR_OTHER"; break;
++    }
++    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << boost::format(": error loading page %1% %2% %3% %4%") %
++        evt.GetURL() % evt.GetTarget() % e % evt.GetString();
++}
++
++void PrinterWebView::OnLoaded(wxWebViewEvent &evt)
+ {
+     if (evt.GetURL().IsEmpty())
+         return;
+-    //ORCA: url loaded successfully, safe to clear
+-    m_url_deferred.clear();
+-    SendAPIKey();
+-  
+-    if (m_handler != nullptr) {
+-        m_handler->on_loaded(evt);
++
++    if (m_creality_device_page_active) {
++        send_creality_initial_state();
++        inject_creality_logo_light_control();
++        if (!m_creality_camera_keepalive_timer.IsRunning())
++            m_creality_camera_keepalive_timer.Start(60000);
+         return;
+     }
+-}
+ 
+-void PrinterWebView::OnNewWindow(wxWebViewEvent& evt)
+-{
+-  const wxString url = evt.GetURL();
+-  if (!url.empty())
+-    wxLaunchDefaultBrowser(url);
+-  evt.Veto();
++    SendAPIKey();
++    if (m_handler)
++        m_handler->on_loaded(evt);
+ }
+ 
+-void PrinterWebView::OnScriptMessage(wxWebViewEvent& evt)
++void PrinterWebView::OnNewWindow(wxWebViewEvent& evt)
+ {
+-  if (m_handler != nullptr)
+-    m_handler->on_script_message(evt);
++    const wxString url = evt.GetURL();
++    if (!url.empty())
++        wxLaunchDefaultBrowser(url);
++    evt.Veto();
+ }
+ 
+-
+-} // GUI
+-} // Slic3r
++} // namespace GUI
++} // namespace Slic3r
+diff --git a/src/slic3r/GUI/PrinterWebView.hpp b/src/slic3r/GUI/PrinterWebView.hpp
+index 8a62ce70a2..d3179ec4ae 100644
+--- a/src/slic3r/GUI/PrinterWebView.hpp
++++ b/src/slic3r/GUI/PrinterWebView.hpp
+@@ -1,39 +1,19 @@
+ #ifndef slic3r_PrinterWebView_hpp_
+ #define slic3r_PrinterWebView_hpp_
+ 
+-
+-#include "wx/artprov.h"
+-#include "wx/cmdline.h"
+-#include "wx/notifmsg.h"
+-#include "wx/settings.h"
+-#include <wx/webview.h>
+-#include <wx/string.h>
+-
+-#if wxUSE_WEBVIEW_EDGE
+-#include "wx/msw/webview_edge.h"
+-#endif
+-
+-#include "wx/webviewarchivehandler.h"
+-#include "wx/webviewfshandler.h"
+-#include "wx/numdlg.h"
+-#include "wx/infobar.h"
+-#include "wx/filesys.h"
+-#include "wx/fs_arc.h"
+-#include "wx/fs_mem.h"
+-#include "wx/stdpaths.h"
++#include <nlohmann/json.hpp>
++#include <boost/optional.hpp>
++#include <memory>
+ #include <wx/panel.h>
+-#include <wx/tbarbase.h>
+-#include "wx/textctrl.h"
++#include <wx/string.h>
+ #include <wx/timer.h>
+-#include <memory>
+-
++#include <wx/webview.h>
+ 
+ namespace Slic3r {
+ namespace GUI {
+ 
+ class PrinterWebViewHandler;
+ 
+-
+ class PrinterWebView : public wxPanel {
+ public:
+     PrinterWebView(wxWindow *parent);
+@@ -45,7 +25,10 @@ public:
+     void OnError(wxWebViewEvent& evt);
+     void OnLoaded(wxWebViewEvent& evt);
+     void OnNewWindow(wxWebViewEvent& evt);
++    void OnNavigating(wxWebViewEvent& evt);
+     void OnScriptMessage(wxWebViewEvent& evt);
++    void OnCrealityCameraKeepAlive(wxTimerEvent& evt);
++    void resume_creality_page();
+     void reload();
+     void update_mode();
+ 
+@@ -55,18 +38,33 @@ private:
+     friend class PrinterWebViewHandler;
+ 
+     void SendAPIKey();
+-
+-    wxWebView* m_browser;
+-    long m_zoomFactor;
++    bool current_printer_is_creality_print() const;
++    wxString creality_device_page_url() const;
++    wxString resolve_url_for_current_printer(const wxString& requested_url);
++    nlohmann::json query_creality_info(const std::string& address) const;
++    nlohmann::json build_creality_device_data() const;
++    nlohmann::json load_creality_machine_list() const;
++    nlohmann::json current_creality_device_ref() const;
++    void send_creality_command(const std::string& command, const nlohmann::json& data);
++    void send_creality_capabilities();
++    void send_creality_initial_state();
++    void inject_creality_logo_light_control();
++    boost::optional<bool> query_creality_logo_light_state() const;
++    bool set_creality_logo_light(bool on) const;
++    void handle_creality_script_message(const nlohmann::json& message);
++
++    wxWebView* m_browser { nullptr };
++    long m_zoomFactor { 100 };
+     wxString m_apikey;
+-    bool m_apikey_sent;
++    bool m_apikey_sent { false };
+     wxString m_url_deferred;
++    bool m_creality_device_page_active { false };
++    bool m_creality_init_sent { false };
+     std::unique_ptr<PrinterWebViewHandler> m_handler;
+-
+-    // DECLARE_EVENT_TABLE()
++    wxTimer m_creality_camera_keepalive_timer;
+ };
+ 
+ } // GUI
+ } // Slic3r
+ 
+-#endif /* slic3r_Tab_hpp_ */
++#endif /* slic3r_PrinterWebView_hpp_ */
+diff --git a/src/slic3r/GUI/Widgets/SpinInput.cpp b/src/slic3r/GUI/Widgets/SpinInput.cpp
+index ccd7a80447..46b46e0553 100644
+--- a/src/slic3r/GUI/Widgets/SpinInput.cpp
++++ b/src/slic3r/GUI/Widgets/SpinInput.cpp
+@@ -4,6 +4,7 @@
+ #include "TextCtrl.h"
+ 
+ #include <wx/dcgraph.h>
++#include <wx/dcbuffer.h>
+ 
+ BEGIN_EVENT_TABLE(SpinInput, StaticBox)
+ 
+@@ -29,6 +30,7 @@ SpinInput::SpinInput()
+     border_color     = StateColor(std::make_pair(0xDBDBDB, (int) StateColor::Disabled), std::make_pair(0x009688, (int) StateColor::Hovered),
+                               std::make_pair(0xDBDBDB, (int) StateColor::Normal));
+     background_color = StateColor(std::make_pair(0xF0F0F1, (int) StateColor::Disabled), std::make_pair(*wxWHITE, (int) StateColor::Normal));
++    SetBackgroundStyle(wxBG_STYLE_PAINT);
+ }
+ 
+ 
+@@ -167,8 +169,9 @@ bool SpinInput::Enable(bool enable)
+ 
+ void SpinInput::paintEvent(wxPaintEvent& evt)
+ {
+-    // depending on your system you may need to look at double-buffered dcs
+-    wxPaintDC dc(this);
++    wxAutoBufferedPaintDC dc(this);
++    dc.SetBackground(wxBrush(GetBackgroundColour()));
++    dc.Clear();
+     render(dc);
+ }
+ 
+diff --git a/src/slic3r/GUI/Widgets/TextInput.cpp b/src/slic3r/GUI/Widgets/TextInput.cpp
+index 362e4c99b3..6220ebb2d6 100644
+--- a/src/slic3r/GUI/Widgets/TextInput.cpp
++++ b/src/slic3r/GUI/Widgets/TextInput.cpp
+@@ -4,6 +4,7 @@
+ #include "slic3r/GUI/Widgets/Label.hpp"
+ 
+ #include <wx/dcclient.h>
++#include <wx/dcbuffer.h>
+ #include <wx/dcgraph.h>
+ 
+ BEGIN_EVENT_TABLE(TextInput, StaticBox)
+@@ -30,6 +31,7 @@ TextInput::TextInput()
+                               std::make_pair(0xDBDBDB, (int) StateColor::Normal));
+     background_color = StateColor(std::make_pair(0xF0F0F1, (int) StateColor::Disabled), std::make_pair(*wxWHITE, (int) StateColor::Normal));
+     SetFont(Label::Body_12);
++    SetBackgroundStyle(wxBG_STYLE_PAINT);
+ }
+ 
+ TextInput::TextInput(wxWindow *     parent,
+@@ -211,8 +213,9 @@ void TextInput::DoSetToolTipText(wxString const &tip)
+ 
+ void TextInput::paintEvent(wxPaintEvent &evt)
+ {
+-    // depending on your system you may need to look at double-buffered dcs
+-    wxPaintDC dc(this);
++    wxAutoBufferedPaintDC dc(this);
++    dc.SetBackground(wxBrush(GetBackgroundColour()));
++    dc.Clear();
+     render(dc);
+ }
+ 
+diff --git a/src/slic3r/GUI/WipeTowerDialog.cpp b/src/slic3r/GUI/WipeTowerDialog.cpp
+index abf8baf086..598056437e 100644
+--- a/src/slic3r/GUI/WipeTowerDialog.cpp
++++ b/src/slic3r/GUI/WipeTowerDialog.cpp
+@@ -228,6 +228,37 @@ bool is_flush_config_modified()
+     return has_modify;
+ }
+ 
++static bool is_creality_print_host()
++{
++    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
++    if (!preset_bundle)
++        return false;
++
++    const DynamicPrintConfig& cfg = preset_bundle->printers.get_edited_preset().config;
++    const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
++    return host_type_opt && host_type_opt->value == htCrealityPrint;
++}
++
++static void bake_flush_multipliers_into_matrix_for_creality(std::vector<double>& matrix, std::vector<double>& multipliers)
++{
++    if (!is_creality_print_host() || matrix.empty() || multipliers.empty())
++        return;
++
++    const size_t heads_count = multipliers.size();
++    if (matrix.size() % heads_count != 0)
++        return;
++
++    const size_t values_per_head = matrix.size() / heads_count;
++    for (size_t head = 0; head < heads_count; ++head) {
++        const double multiplier = multipliers[head];
++        const size_t begin = head * values_per_head;
++        const size_t end = begin + values_per_head;
++        for (size_t i = begin; i < end; ++i)
++            matrix[i] = std::round(std::clamp(matrix[i] * multiplier, 0.0, static_cast<double>(g_max_flush_volume)));
++        multipliers[head] = 1.0;
++    }
++}
++
+ void open_flushing_dialog(wxEvtHandler *parent, const wxEvent &event)
+ {
+     auto                      &project_config = wxGetApp().preset_bundle->project_config;
+@@ -237,6 +268,7 @@ void open_flushing_dialog(wxEvtHandler *parent, const wxEvent &event)
+     if (dlg.GetSubmitFlag()) {
+         auto matrix = dlg.GetFlattenMatrix();
+         auto flush_multipliers = dlg.GetMultipliers();
++        bake_flush_multipliers_into_matrix_for_creality(matrix, flush_multipliers);
+         (project_config.option<ConfigOptionFloats>("flush_volumes_matrix"))->values = std::vector<double>(matrix.begin(), matrix.end());
+         (project_config.option<ConfigOptionFloats>("flush_multiplier"))->values = std::vector<double>(flush_multipliers.begin(), flush_multipliers.end());
+         bool flushing_volume_modify = is_flush_config_modified();
+diff --git a/src/slic3r/Utils/CrealityPrint.cpp b/src/slic3r/Utils/CrealityPrint.cpp
+index 220d046d2e..6e9f3698ef 100644
+--- a/src/slic3r/Utils/CrealityPrint.cpp
++++ b/src/slic3r/Utils/CrealityPrint.cpp
+@@ -1,9 +1,11 @@
+ #include "CrealityPrint.hpp"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <map>
+ #include <sstream>
+ #include <exception>
++#include <vector>
+ #include <boost/format.hpp>
+ #include <boost/foreach.hpp>
+ #include <boost/log/trivial.hpp>
+@@ -23,6 +25,7 @@
+ #include "slic3r/GUI/format.hpp"
+ #include "Http.hpp"
+ #include "libslic3r/AppConfig.hpp"
++#include "libslic3r/PresetBundle.hpp"
+ #include "Bonjour.hpp"
+ #include "slic3r/GUI/BonjourDialog.hpp"
+ 
+@@ -177,17 +180,25 @@ bool CrealityPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn,
+     return res;
+ }
+ 
++static std::string creality_host_from_url(const std::string& url, std::string* port = nullptr);
++
+ std::string CrealityPrint::make_url(const std::string &path) const
+ {
+-    if (m_host.find("http://") == 0 || m_host.find("https://") == 0) {
+-        if (m_host.back() == '/') {
+-            return (boost::format("%1%%2%") % m_host % path).str();
+-        } else {
+-            return (boost::format("%1%/%2%") % m_host % path).str();
+-        }
+-    } else {
+-        return (boost::format("http://%1%/%2%") % m_host % path).str();
+-    }
++    std::string port;
++    std::string host = creality_host_from_url(m_host, &port);
++    const bool  https = boost::algorithm::starts_with(m_host, "https://");
++
++    // Users often enter the Fluidd/Moonraker web UI URL so Orca's Device tab opens.
++    // Creality's upload and /info API still live on the base printer HTTP host.
++    std::string base = (https ? "https://" : "http://") + (host.empty() ? m_host : host);
++    if (!port.empty() && port != "4408" && port != "7125" && port != "8000" &&
++        !(https && port == "443") && !(!https && port == "80"))
++        base += ":" + port;
++
++    if (!base.empty() && base.back() == '/')
++        return (boost::format("%1%%2%") % base % path).str();
++
++    return (boost::format("%1%/%2%") % base % path).str();
+ }
+ 
+ std::string CrealityPrint::safe_filename(const std::string &filename) const
+@@ -198,10 +209,131 @@ std::string CrealityPrint::safe_filename(const std::string &filename) const
+     return safe_filename;
+ }
+ 
++static bool parse_int(const std::string& value, int& out)
++{
++    try {
++        size_t pos = 0;
++        int parsed = std::stoi(value, &pos);
++        if (pos != value.size())
++            return false;
++        out = parsed;
++        return true;
++    } catch (...) {
++        return false;
++    }
++}
++
++static int get_extended_info_int(const std::map<std::string, std::string>& info, const std::string& key, int fallback = 0)
++{
++    auto it = info.find(key);
++    if (it == info.end())
++        return fallback;
++
++    int parsed = fallback;
++    return parse_int(it->second, parsed) ? parsed : fallback;
++}
++
++static std::string creality_host_from_url(const std::string& url, std::string* port)
++{
++    std::string host = url;
++    const size_t scheme_pos = host.find("://");
++    if (scheme_pos != std::string::npos)
++        host = host.substr(scheme_pos + 3);
++
++    const size_t path_pos = host.find('/');
++    if (path_pos != std::string::npos)
++        host = host.substr(0, path_pos);
++
++    const size_t at_pos = host.rfind('@');
++    if (at_pos != std::string::npos)
++        host = host.substr(at_pos + 1);
++
++    if (!host.empty() && host.front() == '[') {
++        const size_t end = host.find(']');
++        if (end != std::string::npos) {
++            if (port && end + 2 < host.size() && host[end + 1] == ':')
++                *port = host.substr(end + 2);
++            return host.substr(1, end - 1);
++        }
++    }
++
++    const size_t colon_pos = host.rfind(':');
++    if (colon_pos != std::string::npos && host.find(':') == colon_pos) {
++        if (port)
++            *port = host.substr(colon_pos + 1);
++        host = host.substr(0, colon_pos);
++    } else if (port) {
++        port->clear();
++    }
++
++    return host;
++}
++
++static int json_int_value(const json& obj, const char* key, int fallback = 0)
++{
++    auto it = obj.find(key);
++    if (it == obj.end())
++        return fallback;
++    if (it->is_number_integer())
++        return it->get<int>();
++    if (it->is_string()) {
++        int parsed = fallback;
++        return parse_int(it->get<std::string>(), parsed) ? parsed : fallback;
++    }
++    return fallback;
++}
++
++static std::string json_string_value(const json& obj, const char* key, const std::string& fallback = {})
++{
++    auto it = obj.find(key);
++    if (it == obj.end() || !it->is_string())
++        return fallback;
++    return it->get<std::string>();
++}
++
++static double json_double_value(const json& obj, const char* key, double fallback = 0.0)
++{
++    auto it = obj.find(key);
++    if (it == obj.end())
++        return fallback;
++    if (it->is_number())
++        return it->get<double>();
++    if (it->is_string()) {
++        try {
++            size_t pos = 0;
++            double parsed = std::stod(it->get<std::string>(), &pos);
++            return pos == it->get<std::string>().size() ? parsed : fallback;
++        } catch (...) {
++            return fallback;
++        }
++    }
++    return fallback;
++}
++
++static std::string normalize_creality_cfs_color(std::string color)
++{
++    if (color.size() == 8 && color[0] == '#')
++        color = "#" + color.substr(2);
++    return color.empty() ? "#FFFFFF" : color;
++}
++
++static std::string creality_material_color(std::string color)
++{
++    if (color.empty())
++        return "";
++    if (color[0] != '#')
++        color = "#" + color;
++    if (color.size() == 8)
++        return color;
++    if (color.size() == 7)
++        return "#0" + color.substr(1);
++    return "#0FFFFFF";
++}
++
+ static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream>& ws,
+                        const std::string& host_url, const std::string& port)
+ {
+-    std::string host = Http::get_host_from_url(host_url);
++    std::string host = creality_host_from_url(host_url);
+ 
+     tcp::resolver resolver{ioc};
+     beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(5));
+@@ -214,33 +346,71 @@ static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream
+             req.set(http::field::user_agent,
+                 std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+         }));
++    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(5));
+     ws.handshake(host, "/");
++}
+ 
+-#ifdef _WIN32
+-    DWORD recv_timeout = 3000;
+-#else
+-    struct timeval recv_timeout = {3, 0};
+-#endif
+-    setsockopt(beast::get_lowest_layer(ws).socket().native_handle(),
+-               SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&recv_timeout), sizeof(recv_timeout));
++static void ws_write_json(websocket::stream<beast::tcp_stream>& ws, const json& cmd)
++{
++    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
++    ws.write(net::buffer(cmd.dump()));
++}
++
++static bool ws_is_timeout(beast::error_code ec)
++{
++    return ec == net::error::would_block
++        || ec == net::error::timed_out
++        || ec == beast::error::timeout;
++}
++
++static bool ws_is_clean_end(beast::error_code ec)
++{
++    return ec == websocket::error::closed
++        || ec == net::error::eof
++        || ec == beast::http::error::end_of_stream;
++}
++
++static bool ws_try_write_json(websocket::stream<beast::tcp_stream>& ws, const json& cmd, const char* label)
++{
++    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
++    beast::error_code ec;
++    ws.write(net::buffer(cmd.dump()), ec);
++    if (!ec)
++        return true;
++    if (ws_is_clean_end(ec)) {
++        BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Websocket closed while sending " << label
++                                   << "; command may have been accepted by firmware";
++        return false;
++    }
++    throw beast::system_error{ec};
+ }
+ 
+ static std::string ws_send_and_read(websocket::stream<beast::tcp_stream>& ws, const json& cmd, const std::string& expected_key, int max_reads = 20)
+ {
+-    ws.write(net::buffer(to_string(cmd)));
++    ws_write_json(ws, cmd);
+ 
++    std::string last_msg;
+     for (int i = 0; i < max_reads; i++) {
+         beast::flat_buffer buf;
+         beast::error_code ec;
++        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
+         ws.read(buf, ec);
+-        if (ec == net::error::would_block)
++        if (ws_is_timeout(ec))
++            break;
++        if (ws_is_clean_end(ec)) {
++            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Websocket closed while waiting for '" << expected_key
++                                       << "' after " << i << " message(s)";
+             break;
++        }
+         if (ec)
+             throw beast::system_error{ec};
+         std::string msg = beast::buffers_to_string(buf.data());
++        last_msg = msg;
+         if (msg.find(expected_key) != std::string::npos)
+             return msg;
+     }
++    if (!last_msg.empty() && expected_key.empty())
++        return last_msg;
+     BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: No '" << expected_key << "' response after " << max_reads << " messages";
+     return {};
+ }
+@@ -257,11 +427,19 @@ void CrealityPrint::query_model() const
+ bool CrealityPrint::supports_multi_color_print() const
+ {
+     query_model();
+-    // K2-platform printers with CFS support
+-    return m_model == "F008"    // K2 Plus
+-        || m_model == "F012"    // K2 Pro
+-        || m_model == "F021"    // K2
+-        || m_model == "F022";   // SPARKX i7
++    // Creality printers verified to expose the CFS control path on websocket port 9999.
++    if (m_model == "F008"    // K2 Plus
++        || m_model == "F012" // K2 Pro
++        || m_model == "F021" // K2
++        || m_model == "F018" // Hi
++        || m_model == "F022") // SPARKX i7
++        return true;
++
++    // Some firmware / host-url combinations do not answer /info correctly, while
++    // the CFS websocket still returns valid slot data. Treat that as authoritative.
++    const std::string boxes_json = query_boxes_info();
++    return boxes_json.find("\"boxsInfo\"") != std::string::npos
++        || boxes_json.find("\"materialBoxs\"") != std::string::npos;
+ }
+ 
+ std::string CrealityPrint::model_name() const
+@@ -270,6 +448,7 @@ std::string CrealityPrint::model_name() const
+         {"F008", "K2 Plus"},
+         {"F012", "K2 Pro"},
+         {"F021", "K2"},
++        {"F018", "Hi"},
+         {"F022", "SPARKX i7"},
+     };
+     query_model();
+@@ -281,28 +460,270 @@ std::string CrealityPrint::model_name() const
+ 
+ std::string CrealityPrint::query_boxes_info() const
+ {
++    for (int attempt = 0; attempt < 3; ++attempt) {
++        try {
++            net::io_context ioc;
++            websocket::stream<beast::tcp_stream> ws{ioc};
++            ws_connect(ioc, ws, m_host, "9999");
++
++            json boxs_query = {{"method", "get"}, {"params", {{"boxsInfo", 1}}}};
++            std::string result = ws_send_and_read(ws, boxs_query, "boxsInfo", 30);
++            beast::error_code close_ec;
++            ws.close(websocket::close_code::normal, close_ec);
++            if (!result.empty())
++                return result;
++
++            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Empty boxsInfo response on attempt " << (attempt + 1);
++        } catch (std::exception const& e) {
++            BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to query boxsInfo on attempt " << (attempt + 1) << ": " << e.what();
++        }
++    }
++    return {};
++}
++
++std::vector<CrealityPrint::CfsSlotInfo> CrealityPrint::query_cfs_slots(bool include_external_spool) const
++{
++    std::vector<CfsSlotInfo> slots;
++
++    const std::string boxes_json = query_boxes_info();
++    if (boxes_json.empty()) {
++        BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: CFS boxsInfo query returned no data";
++        return slots;
++    }
++
++    try {
++        auto resp = json::parse(boxes_json);
++        if (!resp.contains("boxsInfo") || !resp["boxsInfo"].contains("materialBoxs") ||
++            !resp["boxsInfo"]["materialBoxs"].is_array()) {
++            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: CFS boxsInfo response did not contain materialBoxs";
++            return slots;
++        }
++
++        for (const auto& box : resp["boxsInfo"]["materialBoxs"]) {
++            if (!box.is_object())
++                continue;
++
++            int box_id = json_int_value(box, "id", -1);
++            int box_type = json_int_value(box, "type", 0);
++            int box_humidity = json_int_value(box, "humidity", -1);
++            int box_temp = json_int_value(box, "temp", 0);
++            bool is_ext_box = box_type == 1 || box_id == 0;
++
++            if (box_type == 0 && json_int_value(box, "state", 0) != 1)
++                continue;
++            if (is_ext_box && !include_external_spool)
++                continue;
++
++            if (!box.contains("materials") || !box["materials"].is_array() || box["materials"].empty()) {
++                if (is_ext_box) {
++                    slots.push_back({
++                        "Ext",
++                        "External spool",
++                        "#FFFFFF",
++                        "External spool",
++                        "",
++                        "",
++                        0,
++                        box_type,
++                        0,
++                        0,
++                        0,
++                        0.0,
++                        box_humidity,
++                        box_temp,
++                        true,
++                        false
++                    });
++                }
++                continue;
++            }
++
++            for (const auto& mat : box["materials"]) {
++                if (!mat.is_object())
++                    continue;
++
++                int slot_id = json_int_value(mat, "id", -1);
++                if (slot_id < 0)
++                    continue;
++
++                std::string material_type = json_string_value(mat, "type");
++                const bool has_material_type = !material_type.empty();
++                if (!is_ext_box && (json_int_value(mat, "state", 0) != 1 || material_type.empty()))
++                    continue;
++                if (is_ext_box && material_type.empty())
++                    material_type = "External spool";
++
++                int mapped_box_id = is_ext_box ? 0 : box_id;
++                slots.push_back({
++                    is_ext_box ? "Ext" : "T" + std::to_string(mapped_box_id) + std::string(1, 'A' + slot_id),
++                    material_type,
++                    normalize_creality_cfs_color(json_string_value(mat, "color", "#FFFFFF")),
++                    json_string_value(mat, "name"),
++                    json_string_value(mat, "vendor"),
++                    json_string_value(mat, "rfid"),
++                    mapped_box_id,
++                    box_type,
++                    slot_id,
++                    json_int_value(mat, "minTemp", 0),
++                    json_int_value(mat, "maxTemp", 0),
++                    json_double_value(mat, "pressure", 0.0),
++                    box_humidity,
++                    box_temp,
++                    is_ext_box,
++                    has_material_type
++                });
++            }
++        }
++    } catch (const json::exception& e) {
++        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to parse boxsInfo slots: " << e.what();
++    }
++
++    BOOST_LOG_TRIVIAL(info) << "CrealityPrint: Parsed " << slots.size() << " CFS slots";
++    return slots;
++}
++
++bool CrealityPrint::set_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot, const std::string& type,
++                                          const std::string& color, const std::string& name,
++                                          const std::string& vendor, int min_temp, int max_temp,
++                                          double pressure) const
++{
++    if (!supports_multi_color_print()) {
++        msg = _L("This Creality printer does not expose CFS material editing.");
++        return false;
++    }
++
++    if (type.empty()) {
++        msg = _L("Select a filament type before saving the CFS slot.");
++        return false;
++    }
++
+     try {
+         net::io_context ioc;
+         websocket::stream<beast::tcp_stream> ws{ioc};
+         ws_connect(ioc, ws, m_host, "9999");
+ 
+-        json boxs_query = {{"method", "get"}, {"params", {{"boxsInfo", 1}}}};
+-        std::string result = ws_send_and_read(ws, boxs_query, "boxsInfo");
++        json material = {
++            {"boxId", slot.box_id},
++            {"id", slot.material_id},
++            {"rfid", slot.rfid},
++            {"type", type},
++            {"vendor", vendor},
++            {"name", name.empty() ? type : name},
++            {"color", creality_material_color(color)},
++            {"minTemp", min_temp + 0.00000001},
++            {"maxTemp", max_temp + 0.00000001},
++            {"pressure", pressure}
++        };
++        if (slot.box_type == 2)
++            material["boxType"] = slot.box_type;
++
++        json cmd = {{"method", "set"}, {"params", {{"modifyMaterial", material}}}};
++        ws_write_json(ws, cmd);
++
++        beast::flat_buffer buffer;
++        beast::error_code ec;
++        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
++        ws.read(buffer, ec);
++        if (ec && !ws_is_timeout(ec))
++            throw beast::system_error{ec};
++
+         ws.close(websocket::close_code::normal);
+-        return result;
++        return true;
+     } catch (std::exception const& e) {
+-        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to query boxsInfo: " << e.what();
+-        return {};
++        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to set CFS material: " << e.what();
++        msg = wxString::FromUTF8(e.what());
++        return false;
++    }
++}
++
++bool CrealityPrint::reset_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot) const
++{
++    if (!supports_multi_color_print()) {
++        msg = _L("This Creality printer does not expose CFS material editing.");
++        return false;
++    }
++
++    try {
++        net::io_context ioc;
++        websocket::stream<beast::tcp_stream> ws{ioc};
++        ws_connect(ioc, ws, m_host, "9999");
++
++        json material = {
++            {"boxId", slot.box_id},
++            {"id", slot.material_id},
++            {"rfid", ""},
++            {"type", ""},
++            {"vendor", ""},
++            {"name", ""},
++            {"color", ""},
++            {"minTemp", 0},
++            {"maxTemp", 0},
++            {"pressure", 0}
++        };
++        if (slot.box_type == 2)
++            material["boxType"] = slot.box_type;
++
++        json cmd = {{"method", "set"}, {"params", {{"modifyMaterial", material}}}};
++        ws_write_json(ws, cmd);
++
++        beast::flat_buffer buffer;
++        beast::error_code ec;
++        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
++        ws.read(buffer, ec);
++        if (ec && !ws_is_timeout(ec))
++            throw beast::system_error{ec};
++
++        ws.close(websocket::close_code::normal);
++        return true;
++    } catch (std::exception const& e) {
++        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to clear CFS material: " << e.what();
++        msg = wxString::FromUTF8(e.what());
++        return false;
++    }
++}
++
++bool CrealityPrint::feed_or_retract_cfs_slot(wxString& msg, const CfsSlotInfo& slot, bool feed) const
++{
++    if (!supports_multi_color_print()) {
++        msg = _L("This Creality printer does not expose CFS feed/retract controls.");
++        return false;
++    }
++
++    try {
++        net::io_context ioc;
++        websocket::stream<beast::tcp_stream> ws{ioc};
++        ws_connect(ioc, ws, m_host, "9999");
++
++        json cmd = {
++            {"method", "set"},
++            {"params", {
++                {"feedInOrOut", {
++                    {"boxId", slot.box_id},
++                    {"materialId", slot.material_id},
++                    {"isFeed", feed ? 1 : 0}
++                }}
++            }}
++        };
++        ws_write_json(ws, cmd);
++
++        beast::flat_buffer buffer;
++        beast::error_code ec;
++        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
++        ws.read(buffer, ec);
++        if (ec && !ws_is_timeout(ec))
++            throw beast::system_error{ec};
++
++        ws.close(websocket::close_code::normal);
++        return true;
++    } catch (std::exception const& e) {
++        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to feed/retract CFS material: " << e.what();
++        msg = wxString::FromUTF8(e.what());
++        return false;
+     }
+ }
+ 
+ std::string CrealityPrint::get_print_host_webui(DynamicPrintConfig* config)
+ {
+-    // K-series printers (K2 / K2 Plus / K2 Pro) ship with Mainsail on port 4408.
+-    // Port 80 hosts only the Creality control / upload API, which returns 404
+-    // for unknown paths and therefore renders as a blank/404 page in Orca's
+-    // Device WebView. Default to the Mainsail URL when the user hasn't
+-    // explicitly set print_host_webui.
+     if (config == nullptr)
+         return {};
+ 
+@@ -351,7 +772,12 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                 while (std::getline(iss, part, '\t'))
+                     parts.push_back(part);
+                 if (parts.size() >= 5) {
+-                    int box_id = std::stoi(parts[3]);
++                    int box_id = 0;
++                    int material_id = 0;
++                    if (!parse_int(parts[3], box_id) || !parse_int(parts[4], material_id)) {
++                        BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Ignoring invalid CFS mapping entry: " << val;
++                        continue;
++                    }
+                     if (box_id == 0)
+                         use_spool_holder = true;
+                     color_list.push_back({
+@@ -359,18 +785,64 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                         {"type", parts[1]},
+                         {"color", parts[2]},
+                         {"boxId", box_id},
+-                        {"materialId", std::stoi(parts[4])}
++                        {"materialId", material_id}
+                     });
+                 }
+             }
+ 
+-            int enable_self_test = 0;
+-            {
+-                auto it = extended_info.find("enableSelfTest");
+-                if (it != extended_info.end())
+-                    enable_self_test = std::stoi(it->second);
++            if (color_list.empty()) {
++                int gcode_filament_count = 0;
++                if (GUI::wxGetApp().preset_bundle) {
++                    auto full_config = GUI::wxGetApp().preset_bundle->full_config();
++                    if (auto* filament_colors = full_config.option<ConfigOptionStrings>("filament_colour"))
++                        gcode_filament_count = static_cast<int>(filament_colors->values.size());
++                }
++
++                const bool allow_ext_spool = gcode_filament_count <= 1;
++                auto slots = query_cfs_slots(allow_ext_spool);
++                for (const auto& slot : slots) {
++                    if (slot.external || slot.type.empty())
++                        continue;
++                    color_list.push_back({
++                        {"id", "T1" + std::string(1, static_cast<char>('A' + static_cast<int>(color_list.size())))},
++                        {"type", slot.type},
++                        {"color", slot.color},
++                        {"boxId", slot.box_id},
++                        {"materialId", slot.material_id}
++                    });
++                    if (gcode_filament_count > 0 && color_list.size() >= static_cast<size_t>(gcode_filament_count))
++                        break;
++                }
++
++                if (color_list.empty() && allow_ext_spool) {
++                    for (const auto& slot : slots) {
++                        if (!slot.external)
++                            continue;
++                        use_spool_holder = true;
++                        color_list.push_back({
++                            {"id", "T1A"},
++                            {"type", slot.type},
++                            {"color", slot.color},
++                            {"boxId", slot.box_id},
++                            {"materialId", slot.material_id}
++                        });
++                        break;
++                    }
++                }
++
++                if (color_list.empty()) {
++                    msg = _L("Creality CFS filament mapping is missing. Use Upload only, or reopen the dialog after the printer/CFS is reachable.");
++                    return false;
++                }
+             }
+ 
++            if (use_spool_holder && color_list.size() > 1) {
++                msg = _L("External spool printing cannot be mixed with CFS or multiple mapped filaments.");
++                return false;
++            }
++
++            int enable_self_test = get_extended_info_int(extended_info, "enableSelfTest", 0);
++
+             if (use_spool_holder) {
+                 json cmd = {
+                     {"method", "set"},
+@@ -379,7 +851,7 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                         {"enableSelfTest", enable_self_test}
+                     }}
+                 };
+-                ws.write(net::buffer(to_string(cmd)));
++                ws_try_write_json(ws, cmd, "opGcodeFile");
+             } else {
+                 json color_match = {
+                     {"method", "set"},
+@@ -390,7 +862,7 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                         }}
+                     }}
+                 };
+-                ws.write(net::buffer(to_string(color_match)));
++                bool color_match_sent = ws_try_write_json(ws, color_match, "colorMatch");
+ 
+                 json multi_color_print = {
+                     {"method", "set"},
+@@ -401,7 +873,8 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                         }}
+                     }}
+                 };
+-                ws.write(net::buffer(to_string(multi_color_print)));
++                if (color_match_sent)
++                    ws_try_write_json(ws, multi_color_print, "multiColorPrint");
+             }
+         } else {
+             json cmd = {
+@@ -410,13 +883,20 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
+                     {"opGcodeFile", "printprt:/usr/data/printer_data/gcodes/" + filename}
+                 }}
+             };
+-            ws.write(net::buffer(to_string(cmd)));
++            ws_try_write_json(ws, cmd, "opGcodeFile");
+ 
+             beast::flat_buffer buffer;
+-            ws.read(buffer);
++            beast::error_code ec;
++            beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
++            ws.read(buffer, ec);
++            if (ec && !ws_is_timeout(ec) && !ws_is_clean_end(ec))
++                throw beast::system_error{ec};
+         }
+ 
+-        ws.close(websocket::close_code::normal);
++        beast::error_code close_ec;
++        ws.close(websocket::close_code::normal, close_ec);
++        if (close_ec && !ws_is_clean_end(close_ec))
++            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Ignoring websocket close error after start command: " << close_ec.message();
+         return true;
+     } catch(std::exception const& e) {
+         BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Error starting print: " << e.what();
+diff --git a/src/slic3r/Utils/CrealityPrint.hpp b/src/slic3r/Utils/CrealityPrint.hpp
+index 7a3728dce6..39e1055217 100644
+--- a/src/slic3r/Utils/CrealityPrint.hpp
++++ b/src/slic3r/Utils/CrealityPrint.hpp
+@@ -3,6 +3,7 @@
+ 
+ #include <map>
+ #include <string>
++#include <vector>
+ #include <wx/string.h>
+ #include <boost/optional.hpp>
+ #include <boost/asio/ip/address.hpp>
+@@ -31,12 +32,37 @@ public:
+     PrintHostPostUploadActions         get_post_upload_actions() const;
+     bool upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const override;
+     bool supports_multi_color_print() const;
++
++    struct CfsSlotInfo {
++        std::string tool_id;      // e.g. "T1A" or "Ext"
++        std::string type;         // e.g. "PLA"
++        std::string color;        // normalized "#RRGGBB"
++        std::string name;
++        std::string vendor;
++        std::string rfid;
++        int         box_id = 0;
++        int         box_type = 0;
++        int         material_id = 0;
++        int         min_temp = 0;
++        int         max_temp = 0;
++        double      pressure = 0.0;
++        int         humidity = -1;
++        int         box_temp = 0;
++        bool        external = false;
++        bool        loaded = true;
++    };
++
+     std::string query_boxes_info() const;
++    std::vector<CfsSlotInfo> query_cfs_slots(bool include_external_spool) const;
++    bool set_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot, const std::string& type,
++                               const std::string& color, const std::string& name,
++                               const std::string& vendor, int min_temp, int max_temp,
++                               double pressure) const;
++    bool reset_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot) const;
++    bool feed_or_retract_cfs_slot(wxString& msg, const CfsSlotInfo& slot, bool feed) const;
+     std::string model_name() const;
+ 
+-    // Mainsail on K-series printers listens on port 4408. Use that as the
+-    // default Device-tab WebView URL when the user has not set print_host_webui.
+-    static std::string get_print_host_webui(DynamicPrintConfig *config);
++    static std::string get_print_host_webui(DynamicPrintConfig* config);
+ 
+ protected:
+     virtual void set_auth(Http& http) const;
+@@ -56,4 +82,4 @@ private:
+ };
+ } // namespace Slic3r
+ 
+-#endif
+\ No newline at end of file
++#endif
+-- 
+2.48.1.windows.1
+
