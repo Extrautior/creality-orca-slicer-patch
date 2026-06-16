@@ -11,9 +11,9 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <AssemblyName>Creality-OrcaSlicer-2.4.0-beta-Patch-Installer</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>2.4.0.1</Version>
-    <FileVersion>2.4.0.1</FileVersion>
-    <AssemblyVersion>2.4.0.1</AssemblyVersion>
+    <Version>2.4.0.2</Version>
+    <FileVersion>2.4.0.2</FileVersion>
+    <AssemblyVersion>2.4.0.2</AssemblyVersion>
     <Product>Creality OrcaSlicer 2.4.0-beta Patch Installer</Product>
   </PropertyGroup>
 

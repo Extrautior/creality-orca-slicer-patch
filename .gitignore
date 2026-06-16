@@ -2,6 +2,7 @@
 *.suo
 bin/
 obj/
+build/
 *.log
 *.tmp
 release/*.exe

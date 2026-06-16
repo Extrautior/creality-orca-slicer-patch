@@ -4,6 +4,8 @@
 
 The current patch is based on OrcaSlicer `2.4.0-beta` commit `fc9a8aa9`. It preserves the beta's new printer web-handler abstraction while routing Creality printers through the local Creality device-page bridge.
 
+Revision `r2-20260616` also restores the upstream 2.4 beta webview resize workaround that was accidentally dropped during the Creality bridge port.
+
 ## Device Page
 
 `PrinterWebView.*` supplies the local Creality page with:

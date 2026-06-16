@@ -6,7 +6,7 @@ This repository packages an unofficial Windows compatibility patch that adds the
 
 - Target: OrcaSlicer `2.4.0-beta` Windows x64
 - Exact upstream commit: `fc9a8aa93f7d341c3028d275781d77d2f385023e`
-- Patch revision: `creality-cfs-orca-2.4.0-beta-r1-20260612`
+- Patch revision: `creality-cfs-orca-2.4.0-beta-r2-20260616`
 
 Download the installer from the latest GitHub release:
 
@@ -24,6 +24,7 @@ The installer validates the real OrcaSlicer executable and DLL hashes. It will n
 - Creality print metadata, layer/time markers, and flush-matrix handling.
 - Corrected Creality Hi 0.4 mm and 0.6 mm profiles.
 - Compatibility with OrcaSlicer 2.4's printer web-handler architecture.
+- Preservation of OrcaSlicer 2.4 beta webview behavior while applying the Creality bridge.
 
 ## Install
 

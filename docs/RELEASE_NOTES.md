@@ -1,5 +1,20 @@
 # Release Notes
 
+## v2.4.0-beta-creality-cfs-r2-20260616
+
+Feature-preservation refresh for the OrcaSlicer 2.4.0-beta Creality Hi / CFS patch.
+
+### Fixed
+
+- Restored OrcaSlicer's upstream 2.4 beta webview resize workaround in the patched printer webview path.
+- Re-applied that workaround after the Creality page resets injected scripts, so the Creality bridge no longer drops upstream webview behavior.
+
+### Checked
+
+- The visible OrcaSlicer 2.4 beta timelapse settings remain present in the patched source tree.
+- The Creality device-page bundle still includes timelapse/performance/camera strings and controls from the bundled page.
+- Source patch applies cleanly to the exact upstream beta commit `fc9a8aa9`.
+
 ## v2.4.0-beta-creality-cfs-r1-20260612
 
 First Creality Hi / CFS patch for OrcaSlicer 2.4.0-beta.
