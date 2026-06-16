@@ -1,4 +1,4 @@
-From f35e3efc0036edfd2cb92c5c7dc2d91407500de7 Mon Sep 17 00:00:00 2001
+From 0bae14166395b9b80ab50e226724b918049f3d77 Mon Sep 17 00:00:00 2001
 From: Codex <codex@local>
 Date: Fri, 12 Jun 2026 11:32:20 +0300
 Subject: [PATCH] Port Creality Hi/CFS patch to OrcaSlicer 2.4.0-beta
@@ -9,12 +9,13 @@ Subject: [PATCH] Port Creality Hi/CFS patch to OrcaSlicer 2.4.0-beta
  .../machine/Creality Hi 0.6 nozzle.json       |   10 +-
  src/CMakeLists.txt                            |    9 +
  src/OrcaSlicer.cpp                            |    1 +
- src/libslic3r/GCode.cpp                       |   52 +-
+ src/libslic3r/GCode.cpp                       |   62 +-
  src/libslic3r/GCode/GCodeProcessor.cpp        |   31 +-
  src/libslic3r/GCode/GCodeProcessor.hpp        |    1 +
  src/libslic3r/Print.cpp                       |    4 +-
- src/libslic3r/PrintConfig.cpp                 |   43 +
- src/libslic3r/PrintConfig.hpp                 |    6 +
+ src/libslic3r/PrintConfig.cpp                 |   48 +-
+ src/libslic3r/PrintConfig.hpp                 |    9 +-
+ src/slic3r/GUI/ConfigManipulation.cpp         |    9 +-
  src/slic3r/GUI/GCodeViewer.cpp                |   73 +-
  src/slic3r/GUI/GUI_ObjectList.cpp             |   38 +-
  src/slic3r/GUI/ObjectDataViewModel.cpp        |    8 +-
@@ -29,7 +30,7 @@ Subject: [PATCH] Port Creality Hi/CFS patch to OrcaSlicer 2.4.0-beta
  src/slic3r/GUI/WipeTowerDialog.cpp            |   32 +
  src/slic3r/Utils/CrealityPrint.cpp            |  574 +++++++-
  src/slic3r/Utils/CrealityPrint.hpp            |   34 +-
- 25 files changed, 2511 insertions(+), 336 deletions(-)
+ 26 files changed, 2530 insertions(+), 344 deletions(-)
  create mode 100644 CREALITY_HI_CFS_PATCH.md
 
 diff --git a/CREALITY_HI_CFS_PATCH.md b/CREALITY_HI_CFS_PATCH.md
@@ -216,7 +217,7 @@ index 72b6775e55..6dd23a5f29 100644
      #include <commctrl.h>
      #ifdef SLIC3R_GUI
 diff --git a/src/libslic3r/GCode.cpp b/src/libslic3r/GCode.cpp
-index 54b4d4bcff..d11aef5759 100644
+index 54b4d4bcff..e338899749 100644
 --- a/src/libslic3r/GCode.cpp
 +++ b/src/libslic3r/GCode.cpp
 @@ -2043,6 +2043,11 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
@@ -249,7 +250,28 @@ index 54b4d4bcff..d11aef5759 100644
      gcode += buf;
      // export layer height
      float height = first_layer ? static_cast<float>(print_z) : static_cast<float>(print_z) - m_last_layer_z;
-@@ -4595,6 +4602,9 @@ LayerResult GCode::process_layer(
+@@ -4558,7 +4565,9 @@ LayerResult GCode::process_layer(
+     bool is_multi_extruder = m_config.nozzle_diameter.size() > 1;
+ 
+     bool need_insert_timelapse_gcode_for_traditional = false;
+-    if ((!m_wipe_tower || !m_wipe_tower->enable_timelapse_print()) && (is_BBL_Printer() || !m_config.time_lapse_gcode.value.empty())) {
++    if (m_config.timelapse_type.value != TimelapseType::tlDisabled &&
++        (!m_wipe_tower || !m_wipe_tower->enable_timelapse_print()) &&
++        (is_BBL_Printer() || !m_config.time_lapse_gcode.value.empty())) {
+         need_insert_timelapse_gcode_for_traditional = ((is_i3_printer && !m_spiral_vase) || is_multi_extruder);
+     }
+ 
+@@ -4576,7 +4585,8 @@ LayerResult GCode::process_layer(
+     m_layer = &layer;
+     m_object_layer_over_raft = false;
+ 
+-    if (!m_config.time_lapse_gcode.value.empty() && !is_BBL_Printer()) {
++    if (m_config.timelapse_type.value != TimelapseType::tlDisabled &&
++        !m_config.time_lapse_gcode.value.empty() && !is_BBL_Printer()) {
+         DynamicConfig config;
+         config.set_key_value("layer_num", new ConfigOptionInt(m_layer_index));
+         config.set_key_value("layer_z", new ConfigOptionFloat(print_z));
+@@ -4595,6 +4605,9 @@ LayerResult GCode::process_layer(
              print.config().layer_change_gcode.value, m_writer.filament()->id(), &config)
              + "\n";
          config.set_key_value("max_layer_z", new ConfigOptionFloat(m_max_layer_z));
@@ -259,7 +281,17 @@ index 54b4d4bcff..d11aef5759 100644
      }
      //BBS: set layer time fan speed after layer change gcode
      gcode += ";_SET_FAN_SPEED_CHANGING_LAYER\n";
-@@ -5598,6 +5608,10 @@ void GCode::apply_print_config(const PrintConfig &print_config)
+@@ -5066,7 +5079,8 @@ LayerResult GCode::process_layer(
+         auto timelapse_pos=m_timelapse_pos_picker.pick_pos(ctx);
+ 
+         std::string timelapse_gcode;
+-        if (!print.config().time_lapse_gcode.value.empty()) {
++        if (print.config().timelapse_type.value != TimelapseType::tlDisabled &&
++            !print.config().time_lapse_gcode.value.empty()) {
+             DynamicConfig config;
+             config.set_key_value("layer_num", new ConfigOptionInt(m_layer_index));
+             config.set_key_value("layer_z", new ConfigOptionFloat(print_z));
+@@ -5598,6 +5612,10 @@ void GCode::apply_print_config(const PrintConfig &print_config)
  void GCode::append_full_config(const Print &print, std::string &str)
  {
      DynamicPrintConfig cfg = print.full_print_config();
@@ -270,7 +302,7 @@ index 54b4d4bcff..d11aef5759 100644
      { // correct the flush_volumes_matrix with flush_multiplier values
          std::vector<double> temp_cfg_flush_multiplier = cfg.option<ConfigOptionFloats>("flush_multiplier")->values;
          std::vector<double> temp_flush_volumes_matrix = cfg.option<ConfigOptionFloats>("flush_volumes_matrix")->values;
-@@ -5614,6 +5628,8 @@ void GCode::append_full_config(const Print &print, std::string &str)
+@@ -5614,6 +5632,8 @@ void GCode::append_full_config(const Print &print, std::string &str)
                                 [temp_cfg_flush_multiplier_idx](double inputx) { return std::round(inputx * temp_cfg_flush_multiplier_idx); });
              }
              cfg.option<ConfigOptionFloats>("flush_volumes_matrix")->values = temp_flush_volumes_matrix;
@@ -279,7 +311,7 @@ index 54b4d4bcff..d11aef5759 100644
          } else if (filament_count_tmp == 1) {
          } // Not applicable to flush matrix situations
          else { // flush_volumes_matrix value count error?
-@@ -5635,9 +5651,22 @@ void GCode::append_full_config(const Print &print, std::string &str)
+@@ -5635,9 +5655,22 @@ void GCode::append_full_config(const Print &print, std::string &str)
      auto is_banned = [](const std::string &key) {
          return banned_keys.find(key) != banned_keys.end();
      };
@@ -303,7 +335,7 @@ index 54b4d4bcff..d11aef5759 100644
              if (key == "wipe_tower_x" || key == "wipe_tower_y") {
                  ss << std::fixed << std::setprecision(3) << "; " << key << " = " << dynamic_cast<const ConfigOptionFloats*>(cfg.option(key))->get_at(print.get_plate_index()) << "\n";
              }
-@@ -5647,6 +5676,25 @@ void GCode::append_full_config(const Print &print, std::string &str)
+@@ -5647,6 +5680,25 @@ void GCode::append_full_config(const Print &print, std::string &str)
                  ss << "; " << key << " = " << cfg.opt_serialize(key) << "\n";
          }
      }
@@ -428,10 +460,20 @@ index 0d58e2dc00..94c8745955 100644
          processor.set_xy_offset(origin(0), origin(1));
          //processor.enable_producers(true);
 diff --git a/src/libslic3r/PrintConfig.cpp b/src/libslic3r/PrintConfig.cpp
-index 5e657971a5..13b83e9dd3 100644
+index 5e657971a5..165a84642f 100644
 --- a/src/libslic3r/PrintConfig.cpp
 +++ b/src/libslic3r/PrintConfig.cpp
-@@ -2559,6 +2559,49 @@ void PrintConfigDef::init_fff_params()
+@@ -432,7 +432,8 @@ CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(BrimType)
+ // using 0,1 to compatible with old files
+ static const t_config_enum_values s_keys_map_TimelapseType = {
+     {"0",       tlTraditional},
+-    {"1",       tlSmooth}
++    {"1",       tlSmooth},
++    {"2",       tlDisabled}
+ };
+ CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(TimelapseType)
+ 
+@@ -2559,6 +2560,49 @@ void PrintConfigDef::init_fff_params()
      def->mode = comAdvanced;
      def->set_default_value(new ConfigOptionFloat(0.0));
  
@@ -481,11 +523,32 @@ index 5e657971a5..13b83e9dd3 100644
      def = this->add("machine_unload_filament_time", coFloat);
      def->label = L("Filament unload time");
      def->tooltip = L("Time to unload old filament when switch filament. It's usually applicable for single-extruder multi-material machines. "
+@@ -5881,8 +5925,10 @@ void PrintConfigDef::init_fff_params()
+     def->enum_keys_map = &ConfigOptionEnum<TimelapseType>::get_enum_values();
+     def->enum_values.emplace_back("0");
+     def->enum_values.emplace_back("1");
++    def->enum_values.emplace_back("2");
+     def->enum_labels.emplace_back(L("Traditional"));
+     def->enum_labels.emplace_back(L("Smooth"));
++    def->enum_labels.emplace_back(L("Off"));
+     def->mode = comSimple;
+     def->set_default_value(new ConfigOptionEnum<TimelapseType>(tlTraditional));
+ 
 diff --git a/src/libslic3r/PrintConfig.hpp b/src/libslic3r/PrintConfig.hpp
-index 352d3b5f67..00b6fd7c65 100644
+index 352d3b5f67..ac1ef085c1 100644
 --- a/src/libslic3r/PrintConfig.hpp
 +++ b/src/libslic3r/PrintConfig.hpp
-@@ -1370,6 +1370,12 @@ PRINT_CONFIG_CLASS_DEFINE(
+@@ -280,7 +280,8 @@ enum BrimType {
+ 
+ enum TimelapseType : int {
+     tlTraditional = 0,
+-    tlSmooth
++    tlSmooth,
++    tlDisabled
+ };
+ 
+ enum SkirtType {
+@@ -1370,6 +1371,12 @@ PRINT_CONFIG_CLASS_DEFINE(
      ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope))
      ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope_segment_length))
      ((ConfigOptionBool,               extrusion_rate_smoothing_external_perimeter_only))
@@ -498,6 +561,40 @@ index 352d3b5f67..00b6fd7c65 100644
  
      
      ((ConfigOptionPercents,            retract_before_wipe))
+diff --git a/src/slic3r/GUI/ConfigManipulation.cpp b/src/slic3r/GUI/ConfigManipulation.cpp
+index a0840c028b..42bbe93ffc 100644
+--- a/src/slic3r/GUI/ConfigManipulation.cpp
++++ b/src/slic3r/GUI/ConfigManipulation.cpp
+@@ -327,7 +327,8 @@ void ConfigManipulation::update_print_fff_config(DynamicPrintConfig* config, con
+            config->opt_int("enforce_support_layers") == 0 &&
+            ! config->opt_bool("detect_thin_wall") &&
+            ! config->opt_bool("overhang_reverse") &&
+-            config->opt_enum<TimelapseType>("timelapse_type") == TimelapseType::tlTraditional &&
++            (config->opt_enum<TimelapseType>("timelapse_type") == TimelapseType::tlTraditional ||
++             config->opt_enum<TimelapseType>("timelapse_type") == TimelapseType::tlDisabled) &&
+             !config->opt_bool("enable_wrapping_detection")))
+     {
+         DynamicPrintConfig new_conf = *config;
+@@ -939,7 +940,9 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, co
+         apply(config, &new_conf);
+     }
+     toggle_line("overhang_reverse_threshold", has_detect_overhang_wall && allow_overhang_reverse && has_overhang_reverse && !has_overhang_reverse_internal_only);
+-    toggle_line("timelapse_type", is_BBL_Printer);
++    const auto *time_lapse_gcode = preset_bundle->printers.get_edited_preset().config.option<ConfigOptionString>("time_lapse_gcode");
++    const bool printer_has_timelapse_gcode = time_lapse_gcode && !time_lapse_gcode->value.empty();
++    toggle_line("timelapse_type", is_BBL_Printer || printer_has_timelapse_gcode);
+ 
+ 
+     bool have_small_area_infill_flow_compensation = config->opt_bool("small_area_infill_flow_compensation");
+@@ -1068,7 +1071,7 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
+ 
+ int ConfigManipulation::show_spiral_mode_settings_dialog(bool is_object_config)
+ {
+-    wxString msg_text = _(L("Spiral mode only works when wall loops is 1, support is disabled, clumping detection by probing is disabled, top shell layers is 0, sparse infill density is 0 and timelapse type is traditional."));
++    wxString msg_text = _(L("Spiral mode only works when wall loops is 1, support is disabled, clumping detection by probing is disabled, top shell layers is 0, sparse infill density is 0 and timelapse type is traditional or off."));
+     auto printer_structure_opt = wxGetApp().preset_bundle->printers.get_edited_preset().config.option<ConfigOptionEnum<PrinterStructure>>("printer_structure");
+     if (printer_structure_opt && printer_structure_opt->value == PrinterStructure::psI3) {
+         msg_text += _(L(" But machines with I3 structure will not generate timelapse videos."));
 diff --git a/src/slic3r/GUI/GCodeViewer.cpp b/src/slic3r/GUI/GCodeViewer.cpp
 index 79afc1daaf..0c18fd96e7 100644
 --- a/src/slic3r/GUI/GCodeViewer.cpp

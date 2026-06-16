@@ -1,5 +1,5 @@
-ae0c3415c909e16fc40a298ef5317cb46b6c5a59562a6ace5dc4787179d22abf *creality-orca-2.4.0-beta.patch
-b0bbb483553d33650bf7ee76180c8787f5c4de488be0875a3825705bb398e735 *creality-orca-patcher-2.4.0-beta-release.zip
-a42a2522acc100e5f1d9dc5163b75e0e7e4f5838e7ef86073c6f8b0ea96746f4 *Creality-OrcaSlicer-2.4.0-beta-Patch-Installer.exe
-731149aba8449bb9d4875810f920b72c6c05bbedf91fefd67ee0cf83e911bed2 *Creality-OrcaSlicer-2.4.0-beta-Patcher-Source.zip
-6f4671daa952ff49be8159d3e64a23f3f758351317bd9cd6ca70a4050df7e7a5 *README.md
+ecb457f0d6171b815064f80a5d7b5ca9cc3e1b0f4bd0ee8b8cbf540eed902772  Creality-OrcaSlicer-2.4.0-beta-Patch-Installer.exe
+48fc24c30865561e322071e30a11079ff93553c710c71cf244508b3b12c2efa9  creality-orca-patcher-2.4.0-beta-release.zip
+696757359b466b4fed8e2f81efacd57cdfbdfd66d4cf1bd227e5383e5e9314bd  Creality-OrcaSlicer-2.4.0-beta-Patcher-Source.zip
+212f139fc3f69eab52b41199fc93b55117a492a140211a2e523f361916458a16  creality-orca-2.4.0-beta.patch
+580969c0db455c7ed2993b38b57cdaf76c4ae5738ff1a8518789ad7ea1179b6b  README.md

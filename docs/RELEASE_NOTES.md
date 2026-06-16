@@ -1,5 +1,20 @@
 # Release Notes
 
+## v2.4.0-beta-creality-cfs-r3-20260616
+
+Timelapse visibility and disable-control fix for the OrcaSlicer 2.4.0-beta Creality Hi / CFS patch.
+
+### Fixed
+
+- Show the **Timelapse** row for printers that provide `time_lapse_gcode`, including Creality Hi profiles.
+- Add an explicit **Off** value to the OrcaSlicer 2.4 beta Timelapse setting.
+- Suppress Creality/non-BBL timelapse G-code emission when Timelapse is set to **Off**.
+
+### Preserved
+
+- All previous Creality Hi / CFS workflow fixes from r1 and r2.
+- OrcaSlicer 2.4 beta printer web-handler and webview behavior.
+
 ## v2.4.0-beta-creality-cfs-r2-20260616
 
 Feature-preservation refresh for the OrcaSlicer 2.4.0-beta Creality Hi / CFS patch.

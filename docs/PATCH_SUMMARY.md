@@ -6,6 +6,8 @@ The current patch is based on OrcaSlicer `2.4.0-beta` commit `fc9a8aa9`. It pres
 
 Revision `r2-20260616` also restores the upstream 2.4 beta webview resize workaround that was accidentally dropped during the Creality bridge port.
 
+Revision `r3-20260616` keeps the beta Timelapse option visible for Creality/time-lapse-capable printers, adds an explicit `Off` value, and gates Creality/non-BBL timelapse G-code emission on that setting.
+
 ## Device Page
 
 `PrinterWebView.*` supplies the local Creality page with:

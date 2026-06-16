@@ -1,5 +1,5 @@
 {
-  "PatchId": "creality-cfs-orca-2.4.0-beta-r2-20260616",
+  "PatchId": "creality-cfs-orca-2.4.0-beta-r3-20260616",
   "Name": "Creality Hi / CFS Patch for OrcaSlicer 2.4.0-beta",
   "TargetVersion": "2.4.0-beta",
   "TargetCommit": "fc9a8aa93f7d341c3028d275781d77d2f385023e",
@@ -11,12 +11,12 @@
     {
       "RelativePath": "orca-slicer.exe",
       "Size": 270848,
-      "Sha256": "9832F784578D0CB8F4189C72C0CE637073BA21A934277997AB6E15D8D33170D2"
+      "Sha256": "34646B582C021590CDD81B3E85385BC44FB2EF4F902FD1437016A7DA0D8CF919"
     },
     {
       "RelativePath": "OrcaSlicer.dll",
-      "Size": 97118720,
-      "Sha256": "A370104E63682EAB1F066005A4A42BBD6426E7BC364CD32701513F3631BFE3EB"
+      "Size": 96956416,
+      "Sha256": "24809626341ECF5552BD898BFE637B489C9A1F97F714112FAC99209D00C8EB83"
     },
     {
       "RelativePath": "resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json",
