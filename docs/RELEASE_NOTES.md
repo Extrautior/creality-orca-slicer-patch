@@ -1,5 +1,27 @@
 # Release Notes
 
+## v2.4.2-creality-cfs-r1-20260709
+
+First Creality Hi / CFS patch for OrcaSlicer 2.4.2 official release.
+
+### Added
+
+- Port of the working OrcaSlicer 2.4 beta Creality Hi / CFS patch to upstream `v2.4.2`.
+- Compatibility with the official 2.4.2 Windows x64 executable and DLL hashes.
+- Creality Hi/CFS mapping, sync, material edit, feed, retract, upload, and start-print support.
+- Creality device page, camera/WebRTC bridge, local-file export, and logo-light controls.
+- Timelapse **Off** option remains available for Creality/time-lapse-capable printers and persists when presets reload.
+
+### Preserved
+
+- OrcaSlicer 2.4.2 feature set and webview behavior.
+- The previous r3 timelapse G-code suppression when Timelapse is set to **Off**.
+
+### Validation
+
+- Full Windows Release build succeeded against upstream `v2.4.2`.
+- Source patch applies cleanly to upstream commit `8500fcdc`.
+
 ## v2.4.0-beta-creality-cfs-r3-20260616
 
 Timelapse visibility and disable-control fix for the OrcaSlicer 2.4.0-beta Creality Hi / CFS patch.

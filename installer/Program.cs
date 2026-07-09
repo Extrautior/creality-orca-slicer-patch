@@ -113,7 +113,7 @@ internal sealed class InstallerForm : Form
 
     public InstallerForm()
     {
-        Text = "Creality OrcaSlicer 2.4.0-beta Patch";
+        Text = "Creality OrcaSlicer 2.4.2 Patch";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(780, 550);
         Size = new Size(860, 610);
@@ -122,7 +122,7 @@ internal sealed class InstallerForm : Form
 
         var title = new Label
         {
-            Text = "Creality Hi / CFS patch for OrcaSlicer 2.4.0-beta",
+            Text = "Creality Hi / CFS patch for OrcaSlicer 2.4.2",
             Font = new Font("Segoe UI Semibold", 18F),
             AutoSize = true,
             Location = new Point(24, 20)
@@ -136,7 +136,7 @@ internal sealed class InstallerForm : Form
         };
         var versionNote = new Label
         {
-            Text = "Supported build: OrcaSlicer 2.4.0-beta, commit fc9a8aa9 only.",
+            Text = "Supported build: OrcaSlicer 2.4.2, commit 8500fcdc only.",
             AutoSize = true,
             ForeColor = Color.FromArgb(140, 60, 20),
             Location = new Point(27, 86)
@@ -209,7 +209,7 @@ internal sealed class InstallerForm : Form
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Select the OrcaSlicer 2.4.0-beta install folder",
+            Description = "Select the OrcaSlicer 2.4.2 install folder",
             UseDescriptionForTitle = true,
             SelectedPath = Directory.Exists(installDirBox.Text)
                 ? installDirBox.Text

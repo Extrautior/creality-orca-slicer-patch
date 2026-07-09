@@ -292,10 +292,10 @@ internal static class PatchEngine
         if (patched)
         {
             VerifyInstalledPayload(bundle, installDir);
-            return "Patched OrcaSlicer 2.4.0-beta installation verified.";
+            return $"Patched OrcaSlicer {bundle.Manifest.TargetVersion} installation verified.";
         }
         if (clean)
-            return "Clean supported OrcaSlicer 2.4.0-beta installation verified.";
+            return $"Clean supported OrcaSlicer {bundle.Manifest.TargetVersion} installation verified.";
         throw new InvalidOperationException("Unsupported OrcaSlicer installation.");
     }
 

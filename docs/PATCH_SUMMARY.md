@@ -2,11 +2,13 @@
 
 ## OrcaSlicer 2.4 Port
 
-The current patch is based on OrcaSlicer `2.4.0-beta` commit `fc9a8aa9`. It preserves the beta's new printer web-handler abstraction while routing Creality printers through the local Creality device-page bridge.
+The current patch is based on OrcaSlicer `2.4.2` commit `8500fcdc`. It preserves OrcaSlicer's 2.4 printer web-handler abstraction while routing Creality printers through the local Creality device-page bridge.
 
 Revision `r2-20260616` also restores the upstream 2.4 beta webview resize workaround that was accidentally dropped during the Creality bridge port.
 
 Revision `r3-20260616` keeps the beta Timelapse option visible for Creality/time-lapse-capable printers, adds an explicit `Off` value, and gates Creality/non-BBL timelapse G-code emission on that setting.
+
+Revision `2.4.2-r1-20260709` ports those fixes to the official 2.4.2 release and keeps the patched `Off` value from being rewritten by OrcaSlicer's new timelapse legacy migration.
 
 ## Device Page
 
@@ -49,7 +51,7 @@ The Creality Hi 0.4 mm and 0.6 mm profiles include:
 - default flush multiplier;
 - multicolor method metadata.
 
-The upstream beta's hard-coded private print-host URL was removed from both profiles.
+The upstream hard-coded private print-host URL was removed from both profiles.
 
 ## Installer
 

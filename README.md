@@ -4,15 +4,15 @@ This repository packages an unofficial Windows compatibility patch that adds the
 
 ## Current Release
 
-- Target: OrcaSlicer `2.4.0-beta` Windows x64
-- Exact upstream commit: `fc9a8aa93f7d341c3028d275781d77d2f385023e`
-- Patch revision: `creality-cfs-orca-2.4.0-beta-r3-20260616`
+- Target: OrcaSlicer `2.4.2` Windows x64
+- Exact upstream commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
+- Patch revision: `creality-cfs-orca-2.4.2-r1-20260709`
 
 Download the installer from the latest GitHub release:
 
-`Creality-OrcaSlicer-2.4.0-beta-Patch-Installer.exe`
+`Creality-OrcaSlicer-2.4.2-Patch-Installer.exe`
 
-The installer validates the real OrcaSlicer executable and DLL hashes. It will not patch another beta, a development build, or a partially modified installation.
+The installer validates the real OrcaSlicer executable and DLL hashes. It will not patch another version, a development build, or a partially modified installation.
 
 ## Features
 
@@ -24,12 +24,13 @@ The installer validates the real OrcaSlicer executable and DLL hashes. It will n
 - Creality print metadata, layer/time markers, and flush-matrix handling.
 - Corrected Creality Hi 0.4 mm and 0.6 mm profiles.
 - Compatibility with OrcaSlicer 2.4's printer web-handler architecture.
-- Preservation of OrcaSlicer 2.4 beta webview behavior while applying the Creality bridge.
+- Preservation of OrcaSlicer 2.4.2 webview behavior while applying the Creality bridge.
 - Timelapse control remains visible for Creality/time-lapse-capable printers and includes an **Off** option.
+- Timelapse **Off** persists on reload in OrcaSlicer 2.4.2.
 
 ## Install
 
-1. Install the official OrcaSlicer `2.4.0-beta` build.
+1. Install the official OrcaSlicer `2.4.2` build.
 2. Close OrcaSlicer.
 3. Run the patch installer.
 4. Confirm the OrcaSlicer folder, normally `C:\Program Files\OrcaSlicer`.
@@ -38,7 +39,7 @@ The installer validates the real OrcaSlicer executable and DLL hashes. It will n
 The installer creates a rollback backup under:
 
 ```text
-%LOCALAPPDATA%\CrealityOrcaPatcher\Backups\2.4.0-beta
+%LOCALAPPDATA%\CrealityOrcaPatcher\Backups\2.4.2
 ```
 
 Run the same installer and select **Restore Backup** to undo the patch.
@@ -46,7 +47,7 @@ Run the same installer and select **Restore Backup** to undo the patch.
 ## Safety
 
 - Embedded payload files are SHA-256 verified before installation.
-- Core OrcaSlicer binaries must match the supported clean beta.
+- Core OrcaSlicer binaries must match the supported clean 2.4.2 release.
 - Every overwritten file is backed up.
 - Copies are written and verified before replacing their targets.
 - The completed installation is verified against the payload manifest.
@@ -56,12 +57,13 @@ Run the same installer and select **Restore Backup** to undo the patch.
 
 ## Repository Layout
 
-- `patches/creality-orca-2.4.0-beta.patch` - current source patch.
+- `patches/creality-orca-2.4.2.patch` - current source patch.
+- `patches/creality-orca-2.4.0-beta.patch` - previous 2.4 beta patch.
 - `patches/creality-orca-2.3.2.patch` - previous stable patch.
 - `installer/` - .NET 8 WinForms installer and transactional patch engine.
 - `docs/BUILD_AND_UPDATE.md` - build and packaging guide.
 - `docs/PATCH_SUMMARY.md` - implementation overview.
-- `docs/payload-manifest-2.4.0-beta.json` - release payload hashes.
+- `docs/payload-manifest-2.4.2.json` - current release payload hashes.
 - `release/` - release notes and checksums.
 
 ## Scope

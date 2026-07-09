@@ -2,18 +2,18 @@
 
 ## Current Base
 
-- OrcaSlicer version: `2.4.0-beta`
-- Upstream commit: `fc9a8aa93f7d341c3028d275781d77d2f385023e`
+- OrcaSlicer version: `2.4.2`
+- Upstream commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
 - Platform: Windows x64
 - Toolchain: Visual Studio 2022, CMake, .NET 8
 
 ## Build OrcaSlicer
 
 1. Check out the exact upstream commit.
-2. Apply `patches/creality-orca-2.4.0-beta.patch`.
+2. Apply `patches/creality-orca-2.4.2.patch`.
 3. Build the Windows dependencies and Release configuration.
 
-The official beta script is:
+The official Windows build script is:
 
 ```powershell
 build_release_vs2022.bat deps
@@ -54,7 +54,7 @@ payload/
 - expected clean SHA-256 hashes for `orca-slicer.exe` and `OrcaSlicer.dll`;
 - every payload file's relative path, size, and SHA-256 hash.
 
-The release manifest is stored in `docs/payload-manifest-2.4.0-beta.json`.
+The release manifest is stored in `docs/payload-manifest-2.4.2.json`.
 
 Compress the payload directory as `installer/payload.zip`. The ZIP is intentionally excluded from Git history and distributed in the GitHub release/source archive.
 
