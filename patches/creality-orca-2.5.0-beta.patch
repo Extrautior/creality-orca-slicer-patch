@@ -3044,10 +3044,18 @@ index 356ce626..31405de5 100644
  }
  
 diff --git a/src/slic3r/Utils/CrealityPrint.cpp b/src/slic3r/Utils/CrealityPrint.cpp
-index ae52facc..10fd551e 100644
+index ae52facc..64ba08c5 100644
 --- a/src/slic3r/Utils/CrealityPrint.cpp
 +++ b/src/slic3r/Utils/CrealityPrint.cpp
-@@ -39,6 +39,7 @@
+@@ -18,6 +18,7 @@
+ #include <unordered_set>
+ #include <sstream>
+ #include <exception>
++#include <stdexcept>
+ #include <boost/format.hpp>
+ #include <boost/foreach.hpp>
+ #include <boost/log/trivial.hpp>
+@@ -39,6 +40,7 @@
  #include "AsioUtils.hpp"
  #include "Http.hpp"
  #include "libslic3r/AppConfig.hpp"
@@ -3055,7 +3063,7 @@ index ae52facc..10fd551e 100644
  #include "slic3r/GUI/BonjourDialog.hpp"
  
  #include <boost/beast/core.hpp>
-@@ -191,17 +192,25 @@ bool CrealityPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn,
+@@ -191,17 +193,25 @@ bool CrealityPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn,
      return res;
  }
  
@@ -3090,7 +3098,7 @@ index ae52facc..10fd551e 100644
  }
  
  std::string CrealityPrint::safe_filename(const std::string &filename) const
-@@ -212,6 +221,127 @@ std::string CrealityPrint::safe_filename(const std::string &filename) const
+@@ -212,6 +222,127 @@ std::string CrealityPrint::safe_filename(const std::string &filename) const
      return safe_filename;
  }
  
@@ -3218,7 +3226,7 @@ index ae52facc..10fd551e 100644
  // Run every websocket call through run_until_done(), since expires_after() does not apply to synchronous Beast calls.
  static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream>& ws,
                         const std::string& host_url, const std::string& port, std::chrono::milliseconds timeout)
-@@ -322,6 +452,7 @@ static const std::map<std::string, std::string>& cfs_capable_models()
+@@ -322,6 +453,7 @@ static const std::map<std::string, std::string>& cfs_capable_models()
      static const std::map<std::string, std::string> models = {
          {"F008", "K2 Plus"},
          {"F012", "K2 Pro"},
@@ -3226,7 +3234,7 @@ index ae52facc..10fd551e 100644
          {"F021", "K2"},
          {"F022", "SPARKX i7"},
          {"K1", "K1"},
-@@ -361,23 +492,290 @@ std::string CrealityPrint::model_name() const
+@@ -361,23 +493,290 @@ std::string CrealityPrint::model_name() const
  
  std::string CrealityPrint::query_boxes_info() const
  {
@@ -3522,7 +3530,7 @@ index ae52facc..10fd551e 100644
  std::vector<std::string> CrealityPrint::start_print_commands(bool                                      multi_color,
                                                               const std::string&                        gcode_path,
                                                               const std::map<std::string, std::string>& extended_info)
-@@ -399,7 +797,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+@@ -399,7 +798,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
              while (std::getline(iss, part, '\t'))
                  parts.push_back(part);
              if (parts.size() >= 5) {
@@ -3533,7 +3541,7 @@ index ae52facc..10fd551e 100644
                  if (box_id == 0)
                      use_spool_holder = true;
                  color_list.push_back({
-@@ -407,7 +807,7 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+@@ -407,7 +808,7 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
                      {"type", parts[1]},
                      {"color", parts[2]},
                      {"boxId", box_id},
@@ -3542,7 +3550,7 @@ index ae52facc..10fd551e 100644
                  });
              }
          }
-@@ -416,6 +816,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+@@ -416,6 +817,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
              enable_self_test = std::stoi(it->second);
      }
  
@@ -3606,3 +3614,34 @@ index 213ecab7..0877366b 100644
 -#endif
 \ No newline at end of file
 +#endif
+diff --git a/tests/slic3rutils/test_creality_print.cpp b/tests/slic3rutils/test_creality_print.cpp
+index a9660f1d..85fdb501 100644
+--- a/tests/slic3rutils/test_creality_print.cpp
++++ b/tests/slic3rutils/test_creality_print.cpp
+@@ -14,6 +14,7 @@
+ #include <memory>
+ #include <mutex>
+ #include <string>
++#include <stdexcept>
+ #include <thread>
+ #include <tuple>
+ #include <utility>
+@@ -367,14 +368,11 @@ TEST_CASE("A filament mapped onto the spool holder starts a plain print", "[Crea
+     CHECK(params["enableSelfTest"] == 0);
+ }
+ 
+-TEST_CASE("A mapping that includes the spool holder starts a plain print even when other filaments map to CFS slots", "[CrealityPrint]")
++TEST_CASE("A mixed spool-holder and CFS mapping is rejected", "[CrealityPrint]")
+ {
+-    auto cmds = start_commands(true, {{"enableSelfTest", "0"},
+-                                      {"colorMatch_0", slot("T1A", 1, 2)},
+-                                      {"colorMatch_1", slot("T1B", 0, 0)}});
+-    REQUIRE(cmds.size() == 1);
+-    CHECK(cmds[0]["params"]["opGcodeFile"] == "printprt:" + gcode_path);
+-    CHECK_FALSE(cmds[0]["params"].contains("colorMatch"));
++    REQUIRE_THROWS_AS(start_commands(true, {{"enableSelfTest", "0"},
++                                           {"colorMatch_0", slot("T1A", 1, 2)},
++                                           {"colorMatch_1", slot("T1B", 0, 0)}}), std::invalid_argument);
+ }
+ 
+ TEST_CASE("Filaments mapped onto CFS slots send the colour match before the multi-colour start", "[CrealityPrint]")
