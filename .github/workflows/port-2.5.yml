@@ -57,6 +57,13 @@ jobs:
         with:
           path: orca/deps/build/OrcaSlicer_dep
           key: orca-25-345efec-win2022-msvc-deps-v1
+      - name: Resume an incomplete dependency build
+        if: steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: orca/deps/build
+          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: orca-25-345efec-win2022-msvc-state-
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         working-directory: orca
@@ -66,6 +73,12 @@ jobs:
           Select-String -Path dependencies.log -Pattern 'error C\d+|error MSB\d+|CMake Error|fatal error|error LNK\d+' | Select-Object -First 40 | ForEach-Object Line
           Get-Content dependencies.log -Tail 60
           if ($buildExit -ne 0) { throw 'Dependency build failed; see dependencies.log.' }
+      - name: Preserve dependency build state after a failure
+        if: failure() && steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: orca/deps/build
+          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Save compiled dependencies before compiling the port
         if: steps.deps.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
