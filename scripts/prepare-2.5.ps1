@@ -1,13 +1,13 @@
 param([Parameter(Mandatory)][string]$OrcaSource, [Parameter(Mandatory)][string]$WorkDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$config = Get-Content (Join-Path $repo 'config/orca-2.5.0-alpha.json') -Raw | ConvertFrom-Json
+$config = Get-Content (Join-Path $repo 'config/orca-2.5.0-beta.json') -Raw | ConvertFrom-Json
 $source = (Resolve-Path $OrcaSource).Path
 if ((git -C $source rev-parse HEAD) -ne $config.Commit) { throw 'Wrong Orca source commit.' }
 if (git -C $source status --porcelain) { throw 'Use a clean Orca source checkout.' }
-git -C $source apply --check (Join-Path $repo 'patches/creality-orca-2.5.0-alpha.patch')
+git -C $source apply --check (Join-Path $repo 'patches/creality-orca-2.5.0-beta.patch')
 if ($LASTEXITCODE -ne 0) { throw 'Source patch check failed.' }
-git -C $source apply (Join-Path $repo 'patches/creality-orca-2.5.0-alpha.patch')
+git -C $source apply (Join-Path $repo 'patches/creality-orca-2.5.0-beta.patch')
 if ($LASTEXITCODE -ne 0) { throw 'Source patch failed.' }
 New-Item -ItemType Directory -Force $WorkDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path

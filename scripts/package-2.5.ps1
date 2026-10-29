@@ -1,11 +1,11 @@
 param(
     [Parameter(Mandatory)][string]$BuiltDirectory,
     [Parameter(Mandatory)][string]$WorkDirectory,
-    [string]$OutputDirectory = 'release/2.5.0-alpha'
+    [string]$OutputDirectory = 'release/2.5.0-beta'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$config = Get-Content (Join-Path $repo 'config/orca-2.5.0-alpha.json') -Raw | ConvertFrom-Json
+$config = Get-Content (Join-Path $repo 'config/orca-2.5.0-beta.json') -Raw | ConvertFrom-Json
 $built = (Resolve-Path $BuiltDirectory).Path
 New-Item -ItemType Directory -Force $WorkDirectory, $OutputDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
@@ -60,9 +60,9 @@ $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $payload 'manifest.
 & (Join-Path $PSScriptRoot 'rebuild-installer.ps1') -PayloadDirectory $payload -OutputDirectory $output
 $installer = Join-Path $output "Creality-OrcaSlicer-$($config.Version)-Patch-Installer.exe"
 if (!(Test-Path $installer)) { throw 'Installer was not generated.' }
-& (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest.json') -WorkDirectory (Join-Path $work 'test')
+& (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest.json') -WorkDirectory (Join-Path $work 'test') -SmokeTest
 Copy-Item (Join-Path $payload 'manifest.json') (Join-Path $output 'payload-manifest.json')
-Copy-Item (Join-Path $repo 'patches/creality-orca-2.5.0-alpha.patch') $output
+Copy-Item (Join-Path $repo 'patches/creality-orca-2.5.0-beta.patch') $output
 Get-ChildItem $output -File | Where-Object Name -ne 'SHA256SUMS.txt' |
     ForEach-Object { "$((Get-FileHash $_.FullName).Hash)  $($_.Name)" } |
     Set-Content (Join-Path $output 'SHA256SUMS.txt') -Encoding ascii

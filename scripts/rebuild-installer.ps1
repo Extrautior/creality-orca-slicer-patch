@@ -21,6 +21,7 @@ if ($manifest.TargetVersion -notmatch '^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$' -or
     throw 'Payload target version/commit is missing or invalid.'
 }
 $assemblyVersion = ($manifest.TargetVersion -split '-')[0] + '.1'
+$publishDirectory = if ([IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $repoRoot $OutputDirectory }
 
 $embeddedZip = Join-Path $repoRoot "installer\payload.zip"
 if (Test-Path $embeddedZip) {
@@ -43,7 +44,7 @@ try {
         "-p:PatchTargetVersion=$($manifest.TargetVersion)" `
         "-p:PatchTargetCommit=$($manifest.TargetCommit)" `
         "-p:PatchAssemblyVersion=$assemblyVersion" `
-        -o (Join-Path $repoRoot $OutputDirectory)
+        -o $publishDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Installer publish failed.' }
 } finally {
     Remove-Item $embeddedZip -Force -ErrorAction SilentlyContinue

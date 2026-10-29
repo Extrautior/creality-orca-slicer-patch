@@ -1,12 +1,12 @@
 diff --git a/CREALITY_HI_CFS_PATCH.md b/CREALITY_HI_CFS_PATCH.md
 new file mode 100644
-index 00000000..6ec414e9
+index 00000000..64c84a53
 --- /dev/null
 +++ b/CREALITY_HI_CFS_PATCH.md
-@@ -0,0 +1,18 @@
-+# Creality Hi / CFS source port for OrcaSlicer 2.5.0-alpha
+@@ -0,0 +1,20 @@
++# Creality Hi / CFS source port for OrcaSlicer 2.5.0-beta
 +
-+Base: `3880f2c58ec392ed2bd5938ab31c9c7c496c0eb2` (official v2.5.0-alpha).
++Base: `345efec64c7b95a05ce5cf96df0dde66a158835c` (official v2.5.0-beta).
 +
 +Preserves the Creality device-page bridge, CFS sync/edit/feed/retract, external spool mapping,
 +camera recovery, flush-volume metadata, and Hi 0.4/0.6 profiles from the 2.4.2 patch.
@@ -22,6 +22,8 @@ index 00000000..6ec414e9
 +the installer round-trip checks, then validate on a Creality Hi/CFS before publishing.
 +The bundled web assets must match the pinned 2.4.2 payload manifest; older core binaries
 +must never be used as the 2.5 payload.
++
++Also preserves beta async WebSocket deadlines, command batching, layer-change placeholders and no-reload tab selection.
 diff --git a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json
 index 613089a7..cb92a0fe 100644
 --- a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	
@@ -103,7 +105,7 @@ index 95d55f0a..1826d1b5 100644
  	"printhost_authorization_type": "key",
  	"printhost_ssl_ignore_revoke": "0",
 diff --git a/src/OrcaSlicer.cpp b/src/OrcaSlicer.cpp
-index 468cfb9a..02ae0d3a 100644
+index 761d11c8..3a8226ca 100644
 --- a/src/OrcaSlicer.cpp
 +++ b/src/OrcaSlicer.cpp
 @@ -7,6 +7,7 @@
@@ -115,10 +117,10 @@ index 468cfb9a..02ae0d3a 100644
      #include <commctrl.h>
      #ifdef SLIC3R_GUI
 diff --git a/src/libslic3r/GCode.cpp b/src/libslic3r/GCode.cpp
-index 508ab5b4..c13757e6 100644
+index 7a51938e..8b57b145 100644
 --- a/src/libslic3r/GCode.cpp
 +++ b/src/libslic3r/GCode.cpp
-@@ -2760,6 +2760,11 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
+@@ -2839,6 +2839,11 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
      BOOST_LOG_TRIVIAL(info) << boost::format("Will export G-code to %1% soon")%path;
  
      GCodeProcessor::s_IsBBLPrinter = print->is_BBL_printer();
@@ -130,7 +132,7 @@ index 508ab5b4..c13757e6 100644
      m_writer.set_is_bbl_machine(print->is_BBL_printer());
      print->set_started(psGCodeExport);
  
-@@ -4274,6 +4279,8 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
+@@ -4388,6 +4393,8 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
      //BBS: gcode writer doesn't know where the real position of extruder is after inserting custom gcode
      m_writer.set_current_position_clear(false);
      m_start_gcode_filament = GCodeProcessor::get_gcode_last_filament(machine_start_gcode);
@@ -139,7 +141,7 @@ index 508ab5b4..c13757e6 100644
  
      if (is_bbl_printers) {
          m_writer.init_extruder(initial_non_support_extruder_id);
-@@ -6291,7 +6298,7 @@ std::string GCode::generate_timelapse_gcode(const Print &print, coordf_t print_z
+@@ -6468,7 +6475,7 @@ std::string GCode::generate_timelapse_gcode(const Print &print, coordf_t print_z
                                              const std::vector<const PrintObject*> *printed_objects,
                                              bool skip_pos_pick)
  {
@@ -147,8 +149,8 @@ index 508ab5b4..c13757e6 100644
 +    if (!m_writer.filament() || m_config.timelapse_type.value == TimelapseType::tlDisabled)
          return {};
  
-     PosPickCtx ctx;
-@@ -6468,7 +6475,7 @@ LayerResult GCode::process_layer(
+     std::string timelapse_gcode;
+@@ -6650,7 +6657,7 @@ LayerResult GCode::process_layer(
      gcode += ";" + GCodeProcessor::reserved_tag(GCodeProcessor::ETags::Layer_Change) + "\n";
      // export layer z
      char buf[80];
@@ -157,7 +159,7 @@ index 508ab5b4..c13757e6 100644
      gcode += buf;
      // export layer height
      float height = first_layer ? static_cast<float>(print_z) : static_cast<float>(print_z) - m_last_layer_z;
-@@ -6505,7 +6512,9 @@ LayerResult GCode::process_layer(
+@@ -6687,7 +6694,9 @@ LayerResult GCode::process_layer(
      m_farthest_point_timelapse.inserted_this_layer = false;
  
      bool need_insert_timelapse_gcode_for_traditional = false;
@@ -168,27 +170,29 @@ index 508ab5b4..c13757e6 100644
          need_insert_timelapse_gcode_for_traditional = ((is_i3_printer && !m_spiral_vase) || is_multi_extruder);
      }
  
-@@ -6525,7 +6534,8 @@ LayerResult GCode::process_layer(
+@@ -6707,7 +6716,8 @@ LayerResult GCode::process_layer(
      m_layer = &layer;
      m_object_layer_over_raft = false;
  
 -    if (!need_insert_timelapse_gcode_for_traditional && !m_config.time_lapse_gcode.value.empty() && !is_BBL_Printer()) {
 +    if (m_config.timelapse_type.value != TimelapseType::tlDisabled &&
 +        !need_insert_timelapse_gcode_for_traditional && !m_config.time_lapse_gcode.value.empty() && !is_BBL_Printer()) {
-         DynamicConfig config;
-         config.set_key_value("layer_num", new ConfigOptionInt(m_layer_index));
-         config.set_key_value("layer_z", new ConfigOptionFloat(print_z));
-@@ -6573,6 +6583,9 @@ LayerResult GCode::process_layer(
-             print.config().layer_change_gcode.value, m_writer.filament()->id(), &config)
-             + "\n";
-         config.set_key_value("max_layer_z", new ConfigOptionFloat(m_max_layer_z));
-+    } else if (GCodeProcessor::s_IsCrealityPrintHost) {
+         const DynamicConfig config = timelapse_gcode_config(print, print_z, most_used_extruder, &m_printed_objects, false);
+         gcode += this->placeholder_parser_process("time_lapse_gcode",
+              print.config().time_lapse_gcode.value, m_writer.filament()->id(), &config)
+@@ -6716,7 +6726,10 @@ LayerResult GCode::process_layer(
+ 
+     if (!m_config.layer_change_gcode.value.empty())
+         gcode += this->process_layer_change_gcode(print, print_z, most_used_extruder, has_wipe_tower);
+-
++    else if (GCodeProcessor::s_IsCrealityPrintHost) {
 +        sprintf(buf, ";AFTER_LAYER_CHANGE\n;%g\n", print_z);
 +        gcode += buf;
-     }
-     
++    }
      //BBS: set layer time fan speed after layer change gcode
-@@ -8114,6 +8127,10 @@ void GCode::apply_print_config(const PrintConfig &print_config)
+     gcode += ";_SET_FAN_SPEED_CHANGING_LAYER\n";
+ 
+@@ -8244,6 +8257,10 @@ void GCode::apply_print_config(const PrintConfig &print_config)
  void GCode::append_full_config(const Print &print, std::string &str)
  {
      DynamicPrintConfig cfg = print.full_print_config();
@@ -199,19 +203,20 @@ index 508ab5b4..c13757e6 100644
      { // correct the flush_volumes_matrix with flush_multiplier values
          // Fast purge mode uses flush_multiplier_fast; Default is inert.
          std::vector<double> temp_cfg_flush_multiplier = (print.config().prime_volume_mode == PrimeVolumeMode::pvmFast)
-@@ -8133,6 +8150,11 @@ void GCode::append_full_config(const Print &print, std::string &str)
-                                [temp_cfg_flush_multiplier_idx](double inputx) { return std::round(inputx * temp_cfg_flush_multiplier_idx); });
-             }
-             cfg.option<ConfigOptionFloats>("flush_volumes_matrix")->values = temp_flush_volumes_matrix;
-+            if (is_creality_print_host) {
-+                // The matrix already contains the active Default/Fast multiplier.
-+                cfg.option<ConfigOptionFloats>("flush_multiplier")->values = std::vector<double>(heads_count_tmp, 1.0);
-+                cfg.option<ConfigOptionFloats>("flush_multiplier_fast")->values = std::vector<double>(heads_count_tmp, 1.0);
-+            }
-         } else if (filament_count_tmp == 1) {
-         } // Not applicable to flush matrix situations
+@@ -8268,6 +8285,12 @@ void GCode::append_full_config(const Print &print, std::string &str)
          else { // flush_volumes_matrix value count error?
-@@ -8208,9 +8230,22 @@ void GCode::append_full_config(const Print &print, std::string &str)
+             throw Slic3r::SlicingError(_(L("Flush volumes matrix do not match to the correct size!")));
+         }
++        if (is_creality_print_host || is_creality_hi) {
++            // Firmware only honors the exported volumes when its multiplier is 1.
++            // This also covers single-color files with no populated matrix.
++            cfg.option<ConfigOptionFloats>("flush_multiplier")->values = std::vector<double>(heads_count_tmp, 1.0);
++            cfg.option<ConfigOptionFloats>("flush_multiplier_fast")->values = std::vector<double>(heads_count_tmp, 1.0);
++        }
+     }
+     // filament_map_2 (the per-filament (extruder x volume-type) slot map) is computed during apply /
+     // write-back and lives in the applied print config only; the pre-expansion snapshot this dump is
+@@ -8338,9 +8361,22 @@ void GCode::append_full_config(const Print &print, std::string &str)
      auto is_banned = [](const std::string &key) {
          return banned_keys.find(key) != banned_keys.end();
      };
@@ -235,7 +240,7 @@ index 508ab5b4..c13757e6 100644
              if (key == "wipe_tower_x" || key == "wipe_tower_y") {
                  ss << std::fixed << std::setprecision(3) << "; " << key << " = " << dynamic_cast<const ConfigOptionFloats*>(cfg.option(key))->get_at(print.get_plate_index()) << "\n";
              }
-@@ -8220,6 +8255,25 @@ void GCode::append_full_config(const Print &print, std::string &str)
+@@ -8350,6 +8386,25 @@ void GCode::append_full_config(const Print &print, std::string &str)
                  ss << "; " << key << " = " << cfg.opt_serialize(key) << "\n";
          }
      }
@@ -262,10 +267,10 @@ index 508ab5b4..c13757e6 100644
  }
  
 diff --git a/src/libslic3r/GCode/GCodeProcessor.cpp b/src/libslic3r/GCode/GCodeProcessor.cpp
-index ac047be1..85b09205 100644
+index 25e170e5..b8e28b4f 100644
 --- a/src/libslic3r/GCode/GCodeProcessor.cpp
 +++ b/src/libslic3r/GCode/GCodeProcessor.cpp
-@@ -178,6 +178,7 @@ const float GCodeProcessor::Wipe_Width = 0.05f;
+@@ -192,6 +192,7 @@ const float GCodeProcessor::Wipe_Width = 0.05f;
  const float GCodeProcessor::Wipe_Height = 0.05f;
  
  bool GCodeProcessor::s_IsBBLPrinter = true;
@@ -273,7 +278,7 @@ index ac047be1..85b09205 100644
  
  static void set_option_value(ConfigOptionFloats& option, size_t id, float value)
  {
-@@ -1190,6 +1191,12 @@ void GCodeProcessor::run_post_process()
+@@ -1291,6 +1292,12 @@ void GCodeProcessor::run_post_process()
                              export_line.append_line(format_line_M73_stop_int(machine.line_m73_stop_mask.c_str(), to_export_stop));
                              last_exported_stop[i] = to_export_stop;
                          }
@@ -286,7 +291,7 @@ index ac047be1..85b09205 100644
                      }
                  }
              } else if (line == reserved_tag(ETags::Estimated_Printing_Time_Placeholder)) {
-@@ -1376,6 +1383,19 @@ void GCodeProcessor::run_post_process()
+@@ -1441,6 +1448,19 @@ void GCodeProcessor::run_post_process()
      for (const auto& machine : m_time_processor.machines)
          g1_times_cache_it.emplace_back(machine.g1_times_cache.begin());
  
@@ -306,7 +311,7 @@ index ac047be1..85b09205 100644
      // add lines M73 to exported gcode
      auto process_line_move = [
          // Lambdas, mostly for string formatting, all with an empty capture block.
-@@ -1748,8 +1768,17 @@ void GCodeProcessor::run_post_process()
+@@ -1813,8 +1833,17 @@ void GCodeProcessor::run_post_process()
                              tag_line.remove_suffix(1);
                          // strip leading ';'
                          tag_line.remove_prefix(1);
@@ -326,10 +331,10 @@ index ac047be1..85b09205 100644
                          // pre-heat injector. The `!empty()` guard on END avoids dereferencing .back()
                          // on an empty vector. The shipping time_lapse_gcode template emits SKIPPABLE_*
 diff --git a/src/libslic3r/GCode/GCodeProcessor.hpp b/src/libslic3r/GCode/GCodeProcessor.hpp
-index 87c08617..0d329e32 100644
+index a196476e..475d4c79 100644
 --- a/src/libslic3r/GCode/GCodeProcessor.hpp
 +++ b/src/libslic3r/GCode/GCodeProcessor.hpp
-@@ -618,6 +618,7 @@ inline constexpr float DEFAULT_FILAMENT_DENSITY = 1.245f;
+@@ -648,6 +648,7 @@ inline constexpr float DEFAULT_FILAMENT_DENSITY = 1.245f;
          static const float Wipe_Height;
  
          static bool s_IsBBLPrinter;
@@ -338,10 +343,10 @@ index 87c08617..0d329e32 100644
      private:
          using AxisCoords = std::array<double, 4>;
 diff --git a/src/libslic3r/Print.cpp b/src/libslic3r/Print.cpp
-index 93a71dcd..b9025f70 100644
+index ce137806..b35929af 100644
 --- a/src/libslic3r/Print.cpp
 +++ b/src/libslic3r/Print.cpp
-@@ -5306,7 +5306,8 @@ void Print::_make_wipe_tower()
+@@ -5496,7 +5496,8 @@ void Print::_make_wipe_tower()
              wipe_volumes.push_back(std::vector<float>(flush_matrix.begin()+i*number_of_extruders, flush_matrix.begin()+(i+1)*number_of_extruders));
  
          // Orca: itertate over wipe_volumes and change the non-zero values to the prime_volume
@@ -351,7 +356,7 @@ index 93a71dcd..b9025f70 100644
              for (unsigned int i = 0; i < number_of_extruders; ++i) {
                  for (unsigned int j = 0; j < number_of_extruders; ++j) {
                      if (wipe_volumes[i][j] > 0) {
-@@ -5531,6 +5532,7 @@ void Print::export_gcode_from_previous_file(const std::string& file, GCodeProces
+@@ -5722,6 +5723,7 @@ void Print::export_gcode_from_previous_file(const std::string& file, GCodeProces
      try {
          GCodeProcessor processor;
          GCodeProcessor::s_IsBBLPrinter = is_BBL_printer();
@@ -360,10 +365,10 @@ index 93a71dcd..b9025f70 100644
          processor.set_xy_offset(origin(0), origin(1));
          // Reloaded sliced projects re-estimate with the same nozzle-grouping slot context as the
 diff --git a/src/libslic3r/PrintConfig.cpp b/src/libslic3r/PrintConfig.cpp
-index bab1d1b5..0c176a17 100644
+index d5523fa5..43129fce 100644
 --- a/src/libslic3r/PrintConfig.cpp
 +++ b/src/libslic3r/PrintConfig.cpp
-@@ -551,7 +551,8 @@ CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(BrimType)
+@@ -569,7 +569,8 @@ CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(BrimType)
  // using 0,1 to compatible with old files
  static const t_config_enum_values s_keys_map_TimelapseType = {
      {"0",       tlTraditional},
@@ -373,7 +378,7 @@ index bab1d1b5..0c176a17 100644
  };
  CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(TimelapseType)
  
-@@ -3138,6 +3139,49 @@ void PrintConfigDef::init_fff_params()
+@@ -3202,6 +3203,49 @@ void PrintConfigDef::init_fff_params()
      def->mode = comAdvanced;
      def->set_default_value(new ConfigOptionFloat(0.0));
  
@@ -423,7 +428,7 @@ index bab1d1b5..0c176a17 100644
      def = this->add("machine_unload_filament_time", coFloat);
      def->label = L("Filament unload time");
      def->tooltip = L("Time to unload old filament when switch filament. It's usually applicable for single-extruder multi-material machines. "
-@@ -6835,8 +6879,10 @@ void PrintConfigDef::init_fff_params()
+@@ -6929,8 +6973,10 @@ void PrintConfigDef::init_fff_params()
      def->enum_keys_map = &ConfigOptionEnum<TimelapseType>::get_enum_values();
      def->enum_values.emplace_back("0");
      def->enum_values.emplace_back("1");
@@ -434,7 +439,7 @@ index bab1d1b5..0c176a17 100644
      def->mode = comSimple;
      def->set_default_value(new ConfigOptionEnum<TimelapseType>(tlTraditional));
  
-@@ -9713,10 +9759,6 @@ void PrintConfigDef::handle_legacy(t_config_option_key &opt_key, std::string &va
+@@ -9824,10 +9870,6 @@ void PrintConfigDef::handle_legacy(t_config_option_key &opt_key, std::string &va
          opt_key = "slow_down_for_layer_cooling";
      } else if (opt_key == "timelapse_no_toolhead") {
          opt_key = "timelapse_type";
@@ -446,10 +451,10 @@ index bab1d1b5..0c176a17 100644
          value = "normal(manual)";
      } else if (opt_key == "support_type" && value == "tree") {
 diff --git a/src/libslic3r/PrintConfig.hpp b/src/libslic3r/PrintConfig.hpp
-index 8b724a70..6b35e0ae 100644
+index b1bfc8c7..fe6e4d48 100644
 --- a/src/libslic3r/PrintConfig.hpp
 +++ b/src/libslic3r/PrintConfig.hpp
-@@ -460,7 +460,8 @@ enum BrimType {
+@@ -467,7 +467,8 @@ enum BrimType {
  
  enum TimelapseType : int {
      tlTraditional = 0,
@@ -459,7 +464,7 @@ index 8b724a70..6b35e0ae 100644
  };
  
  enum SkirtType {
-@@ -1766,7 +1767,13 @@ PRINT_CONFIG_CLASS_DEFINE(
+@@ -1785,7 +1786,13 @@ PRINT_CONFIG_CLASS_DEFINE(
  
      ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope))
      ((ConfigOptionFloat,               max_volumetric_extrusion_rate_slope_segment_length))
@@ -475,7 +480,7 @@ index 8b724a70..6b35e0ae 100644
      
      ((ConfigOptionPercents,            retract_before_wipe))
 diff --git a/src/slic3r/GUI/ConfigManipulation.cpp b/src/slic3r/GUI/ConfigManipulation.cpp
-index cd7e44b5..41513571 100644
+index 5f0998e7..77cbc943 100644
 --- a/src/slic3r/GUI/ConfigManipulation.cpp
 +++ b/src/slic3r/GUI/ConfigManipulation.cpp
 @@ -485,7 +485,8 @@ void ConfigManipulation::update_print_fff_config(DynamicPrintConfig* config, con
@@ -488,18 +493,18 @@ index cd7e44b5..41513571 100644
              !config->opt_bool("enable_wrapping_detection")))
      {
          DynamicPrintConfig new_conf = *config;
-@@ -1271,7 +1272,9 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
+@@ -1314,7 +1315,9 @@ void ConfigManipulation::toggle_print_fff_options(DynamicPrintConfig *config, in
          apply(config, &new_conf);
      }
-     toggle_line("overhang_reverse_threshold", has_detect_overhang_wall && allow_overhang_reverse && has_overhang_reverse && !has_overhang_reverse_internal_only);
--    toggle_line("timelapse_type", is_BBL_Printer);
+     toggle_line("overhang_reverse_threshold", has_detect_overhang_wall && allow_overhang_reverse && has_overhang_reverse && !has_overhang_reverse_internal_only, -1, _L("Enable overhang wall detection and reverse overhang direction, disable spiral vase mode, and turn off reversing internal perimeters only."));
+-    toggle_line("timelapse_type", is_BBL_Printer, -1, _L("This setting requires a Bambu Lab printer."));
 +    const auto *time_lapse_gcode = preset_bundle->printers.get_edited_preset().config.option<ConfigOptionString>("time_lapse_gcode");
 +    const bool printer_has_timelapse_gcode = time_lapse_gcode && !time_lapse_gcode->value.empty();
-+    toggle_line("timelapse_type", is_BBL_Printer || printer_has_timelapse_gcode);
++    toggle_line("timelapse_type", is_BBL_Printer || printer_has_timelapse_gcode, -1, _L("This setting requires a printer with timelapse G-code."));
  
  
      bool have_small_area_infill_flow_compensation = config->opt_bool("small_area_infill_flow_compensation");
-@@ -1402,7 +1405,7 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
+@@ -1451,7 +1454,7 @@ void ConfigManipulation::toggle_print_sla_options(DynamicPrintConfig* config)
  
  int ConfigManipulation::show_spiral_mode_settings_dialog(bool is_object_config)
  {
@@ -509,10 +514,10 @@ index cd7e44b5..41513571 100644
      if (printer_structure_opt && printer_structure_opt->value == PrinterStructure::psI3) {
          msg_text += _(L(" But machines with I3 structure will not generate timelapse videos."));
 diff --git a/src/slic3r/GUI/GCodeViewer.cpp b/src/slic3r/GUI/GCodeViewer.cpp
-index fbfd44a4..c5d806b4 100644
+index 77c3efb0..d764e65e 100644
 --- a/src/slic3r/GUI/GCodeViewer.cpp
 +++ b/src/slic3r/GUI/GCodeViewer.cpp
-@@ -191,6 +191,58 @@ static const std::vector<std::pair<std::string, libvgcode::EViewType>>& view_typ
+@@ -203,6 +203,58 @@ static const std::vector<std::pair<std::string, libvgcode::EViewType>>& view_typ
      return map;
  }
  
@@ -571,7 +576,7 @@ index fbfd44a4..c5d806b4 100644
  // Find an index of a value in a sorted vector, which is in <z-eps, z+eps>.
  // Returns -1 if there is no such member.
  static int find_close_layer_idx(const std::vector<double> &zs, double &z, double eps)
-@@ -3578,7 +3630,8 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+@@ -3608,7 +3660,8 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
          PartPlateList& plate_list = wxGetApp().plater()->get_partplate_list();
          for (auto plate : plate_list.get_nonempty_plate_list())
          {
@@ -581,7 +586,7 @@ index fbfd44a4..c5d806b4 100644
              auto plate_extruders = plate->get_extruders(true);
              auto max_extruders_colors = wxGetApp().plater()->get_extruders_colors().size();
              for (size_t extruder_id : plate_extruders) {
-@@ -3613,6 +3666,17 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+@@ -3643,6 +3696,17 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
                      support_volume_of_extruders_all_plates[extruder_id] += support_volume;
                  }
              }
@@ -599,7 +604,7 @@ index fbfd44a4..c5d806b4 100644
              const PrintEstimatedStatistics::Mode& plate_time_mode = plate_print_statistics.modes[static_cast<size_t>(m_viewer.get_time_mode())];
              total_time_all_plates += plate_time_mode.time;
  
-@@ -4499,6 +4563,12 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+@@ -4528,6 +4592,12 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
      double unit_conver = imperial_units ? GizmoObjectManipulation::oz_to_g : 1;
      std::vector<double> used_filaments_m;
      std::vector<double> used_filaments_g;
@@ -612,7 +617,7 @@ index fbfd44a4..c5d806b4 100644
  
      // used filament statistics
      for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
-@@ -4534,18 +4604,22 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+@@ -4563,18 +4633,22 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
      }
  
      for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
@@ -639,10 +644,10 @@ index fbfd44a4..c5d806b4 100644
      }
  
 diff --git a/src/slic3r/GUI/GUI_ObjectList.cpp b/src/slic3r/GUI/GUI_ObjectList.cpp
-index e7d1041c..8bc6d6fb 100644
+index 4bd988e3..01abaa39 100644
 --- a/src/slic3r/GUI/GUI_ObjectList.cpp
 +++ b/src/slic3r/GUI/GUI_ObjectList.cpp
-@@ -322,6 +322,42 @@ ObjectList::ObjectList(wxWindow* parent) :
+@@ -328,6 +328,42 @@ ObjectList::ObjectList(wxWindow* parent) :
          set_tooltip_for_item(this->get_mouse_position_in_control());
          event.Skip();
      });
@@ -685,7 +690,7 @@ index e7d1041c..8bc6d6fb 100644
  #endif //__WXMSW__
  
      Bind(wxEVT_DATAVIEW_ITEM_CONTEXT_MENU,  &ObjectList::OnContextMenu,     this);
-@@ -6833,7 +6869,7 @@ void ObjectList::set_extruder_for_selected_items(const int extruder)
+@@ -6920,7 +6956,7 @@ void ObjectList::set_extruder_for_selected_items(const int extruder)
              const int obj_idx = m_objects_model->GetObjectIdByItem(item);
              int vol_idx = m_objects_model->GetVolumeIdByItem(item);
              vol_idx     = m_objects_model->get_real_volume_index_in_3d(obj_idx, vol_idx);
@@ -695,10 +700,10 @@ index e7d1041c..8bc6d6fb 100644
                  if (volume_type != ModelVolumeType::MODEL_PART && volume_type != ModelVolumeType::PARAMETER_MODIFIER)
                      continue;
 diff --git a/src/slic3r/GUI/ObjectDataViewModel.cpp b/src/slic3r/GUI/ObjectDataViewModel.cpp
-index 9c4f3287..e2a84a25 100644
+index 6694c274..e1cb994e 100644
 --- a/src/slic3r/GUI/ObjectDataViewModel.cpp
 +++ b/src/slic3r/GUI/ObjectDataViewModel.cpp
-@@ -1515,8 +1515,10 @@ bool ObjectDataViewModel::UpdateColumValues(unsigned col)
+@@ -1521,8 +1521,10 @@ bool ObjectDataViewModel::UpdateColumValues(unsigned col)
  
          if (items.IsEmpty()) return false;
  
@@ -710,7 +715,7 @@ index 9c4f3287..e2a84a25 100644
  
          return true;
      }
-@@ -1642,8 +1644,10 @@ void ObjectDataViewModel::UpdateVolumesExtruderBitmap(wxDataViewItem obj_item, b
+@@ -1648,8 +1650,10 @@ void ObjectDataViewModel::UpdateVolumesExtruderBitmap(wxDataViewItem obj_item, b
          return;
      ObjectDataViewModelNode* obj_node = static_cast<ObjectDataViewModelNode*>(obj_item.GetID());
      for (auto child : obj_node->GetChildren())
@@ -723,10 +728,10 @@ index 9c4f3287..e2a84a25 100644
  
  int ObjectDataViewModel::GetDefaultExtruderIdx(wxDataViewItem item)
 diff --git a/src/slic3r/GUI/Plater.cpp b/src/slic3r/GUI/Plater.cpp
-index 6e4d3e34..19949fc7 100644
+index e8df8160..598454c5 100644
 --- a/src/slic3r/GUI/Plater.cpp
 +++ b/src/slic3r/GUI/Plater.cpp
-@@ -369,7 +369,7 @@ static std::string get_diameter_string(float diameter)
+@@ -375,7 +375,7 @@ static std::string get_diameter_string(float diameter)
      std::string s = stream.str();
      if (s.find('.') != std::string::npos) {   // Remove trailing zeros, but keep at least one decimal if needed
          s.erase(s.find_last_not_of('0') + 1);
@@ -735,7 +740,7 @@ index 6e4d3e34..19949fc7 100644
      }
      return s;
  }
-@@ -2756,6 +2756,8 @@ void Sidebar::update_sync_ams_btn_enable(wxUpdateUIEvent &e)
+@@ -2766,6 +2766,8 @@ void Sidebar::update_sync_ams_btn_enable(wxUpdateUIEvent &e)
           //btn_sync->Enable(!m_last_slice_state);
           p->m_printer_bbl_sync->Enable(!m_last_slice_state);
           ams_btn->Enable(!m_last_slice_state);
@@ -744,7 +749,7 @@ index 6e4d3e34..19949fc7 100644
           Refresh();
       }
   }
-@@ -3350,7 +3352,7 @@ Sidebar::Sidebar(Plater *parent)
+@@ -3366,7 +3368,7 @@ Sidebar::Sidebar(Plater *parent)
  
      ams_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "ams_fila_sync", wxEmptyString, wxDefaultSize, wxDefaultPosition,
                                                   wxBU_EXACTFIT | wxNO_BORDER, false, 16); // ORCA match icon size with other icons as 16x16
@@ -753,7 +758,7 @@ index 6e4d3e34..19949fc7 100644
      ams_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent &e) {
          sync_ams_list();
      });
-@@ -3359,6 +3361,15 @@ Sidebar::Sidebar(Plater *parent)
+@@ -3375,6 +3377,15 @@ Sidebar::Sidebar(Plater *parent)
      p->m_bpButton_ams_filament = ams_btn;
  
      bSizer39->Add(ams_btn, 0, wxALIGN_CENTER | wxLEFT, FromDIP(SidebarProps::WideSpacing()));
@@ -769,7 +774,7 @@ index 6e4d3e34..19949fc7 100644
      //bSizer39->Add(FromDIP(10), 0, 0, 0, 0 );
  
      ScalableButton* set_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "settings");
-@@ -3799,6 +3810,8 @@ void Sidebar::update_all_preset_comboboxes()
+@@ -3815,6 +3826,8 @@ void Sidebar::update_all_preset_comboboxes()
          p->m_printer_connect->Hide();
          //only show sync-ams button for BBL printer
          p->m_bpButton_ams_filament->Show();
@@ -778,7 +783,7 @@ index 6e4d3e34..19949fc7 100644
          //update print button default value for bbl or third-party printer
          p_mainframe->set_print_button_to_default(MainFrame::PrintSelectType::ePrintPlate);
      } else {
-@@ -3808,10 +3821,13 @@ void Sidebar::update_all_preset_comboboxes()
+@@ -3824,10 +3837,13 @@ void Sidebar::update_all_preset_comboboxes()
  
          // ORCA: show/hide sync-ams button based on filament sync mode
          auto agent = wxGetApp().getAgent();
@@ -793,7 +798,7 @@ index 6e4d3e34..19949fc7 100644
  
          // Orca: with "Support 3MF as gcode" (use_3mf) the local export is a .gcode.3mf bundle, so when no
          // printer host/IP is configured the default action is "Export plate sliced file" (mirrors the
-@@ -6054,14 +6070,11 @@ void Sidebar::on_bed_type_change(BedType bed_type)
+@@ -6067,14 +6083,11 @@ void Sidebar::on_bed_type_change(BedType bed_type)
   * NetworkAgent APIs. The data pipeline is:
   *
   *   Printer Device (MQTT/LAN messages)
@@ -813,7 +818,7 @@ index 6e4d3e34..19949fc7 100644
   *
   * Data Sources:
   * - obj->vt_slot: Virtual trays for external/manual filament loading (when ams_support_virtual_tray is true)
-@@ -6218,6 +6231,141 @@ void Sidebar::get_small_btn_sync_pos_size(wxPoint &pt, wxSize &size) {
+@@ -6231,6 +6244,141 @@ void Sidebar::get_small_btn_sync_pos_size(wxPoint &pt, wxSize &size) {
      pt   = ams_btn->GetScreenPosition();
  }
  
@@ -955,7 +960,7 @@ index 6e4d3e34..19949fc7 100644
  void Sidebar::load_ams_list(MachineObject* obj)
  {
      std::map<int, DynamicPrintConfig> filament_ams_list;
-@@ -6292,14 +6440,33 @@ void Sidebar::load_ams_list(MachineObject* obj)
+@@ -6305,14 +6453,33 @@ void Sidebar::load_ams_list(MachineObject* obj)
  void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
  {
      wxBusyCursor cursor;
@@ -994,7 +999,7 @@ index 6e4d3e34..19949fc7 100644
          auto printer_name = p->plater->get_selected_printer_name_in_combox();
          p->plater->pop_warning_and_go_to_device_page(printer_name, Plater::PrinterWarningType::NOT_CONNECTED, _L("Sync printer information"));
          return;
-@@ -6315,6 +6482,13 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+@@ -6328,6 +6495,13 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
          }
      }
      if (!exist_at_list_one_filament) {
@@ -1008,7 +1013,7 @@ index 6e4d3e34..19949fc7 100644
          if (!obj->is_filament_installed()) {
              p->plater->pop_warning_and_go_to_device_page("", Plater::PrinterWarningType::UNINSTALL_FILAMENT, _L("Sync printer information"));
              return;
-@@ -6322,7 +6496,7 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+@@ -6335,7 +6509,7 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
          p->plater->pop_warning_and_go_to_device_page("", Plater::PrinterWarningType::EMPTY_FILAMENT, _L("Sync printer information"));
          return;
      }
@@ -1017,7 +1022,7 @@ index 6e4d3e34..19949fc7 100644
          return;
      }
      std::string ams_filament_ids = wxGetApp().app_config->get("ams_filament_ids", p->ams_list_device);
-@@ -6330,34 +6504,37 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+@@ -6343,34 +6517,37 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
      if (!ams_filament_ids.empty()) {
          boost::algorithm::split(list2, ams_filament_ids, boost::algorithm::is_any_of(","));
      }
@@ -1083,7 +1088,7 @@ index 6e4d3e34..19949fc7 100644
      }
      list2.resize(list.size());
      auto iter = list.begin();
-@@ -6538,9 +6715,16 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
+@@ -6551,9 +6728,16 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
              }
          }
      }
@@ -1104,10 +1109,10 @@ index 6e4d3e34..19949fc7 100644
  
  
 diff --git a/src/slic3r/GUI/Plater.hpp b/src/slic3r/GUI/Plater.hpp
-index 564addb0..a1aa6459 100644
+index 9f96f45c..ddc1c219 100644
 --- a/src/slic3r/GUI/Plater.hpp
 +++ b/src/slic3r/GUI/Plater.hpp
-@@ -158,6 +158,7 @@ class Sidebar : public wxPanel
+@@ -163,6 +163,7 @@ class Sidebar : public wxPanel
      ConfigOptionMode    m_mode;
      //Button *         btn_sync{nullptr};
      ScalableButton *  ams_btn{nullptr};
@@ -1115,7 +1120,7 @@ index 564addb0..a1aa6459 100644
      bool                                    m_last_slice_state = false;
      SyncNozzleAndAmsDialog*                 m_sna_dialog{nullptr};
      FinishSyncAmsDialog*                    m_fna_dialog{nullptr};
-@@ -168,6 +169,9 @@ class Sidebar : public wxPanel
+@@ -173,6 +174,9 @@ class Sidebar : public wxPanel
      SyncAmsInfoDialog*                      m_sync_dlg{nullptr};
  
      void update_sync_ams_btn_enable(wxUpdateUIEvent &e);
@@ -1443,12 +1448,12 @@ index c348cb0b..52d89396 100644
 +#endif
 \ No newline at end of file
 diff --git a/src/slic3r/GUI/PrinterWebView.cpp b/src/slic3r/GUI/PrinterWebView.cpp
-index e3c1202b..43331de1 100644
+index dd597ad3..d5e80f68 100644
 --- a/src/slic3r/GUI/PrinterWebView.cpp
 +++ b/src/slic3r/GUI/PrinterWebView.cpp
-@@ -2,9 +2,15 @@
+@@ -4,6 +4,10 @@
+ #include "I18N.hpp"
  
- #include "PrinterWebViewHandler.hpp"
  #include "slic3r/GUI/PrinterWebView.hpp"
 +#include "libslic3r/PresetBundle.hpp"
 +#include "libslic3r/PrintConfig.hpp"
@@ -1456,20 +1461,23 @@ index e3c1202b..43331de1 100644
 +#include "libslic3r_version.h"
  #include "slic3r/GUI/GUI_App.hpp"
  #include "slic3r/GUI/MainFrame.hpp"
--#include "libslic3r_version.h"
+ #include <slic3r/GUI/Widgets/WebView.hpp>
+@@ -14,6 +18,9 @@
+ #include "libslic3r/Utils.hpp"
+ #include "libslic3r/Config.hpp"
+ #include "libslic3r/PresetBundle.hpp"
 +#include "slic3r/GUI/Widgets/WebView.hpp"
 +#include "slic3r/GUI/wxExtensions.hpp"
 +#include "slic3r/Utils/Http.hpp"
  
- #include <boost/filesystem/path.hpp>
- #include <utility>
-@@ -12,17 +18,31 @@
- #include <wx/gdicmn.h>
- #include <memory>
- #include <wx/log.h>
--#include "libslic3r/Utils.hpp"
- #include <wx/event.h>
  #include <boost/log/trivial.hpp>
+ #include <boost/filesystem/path.hpp>
+@@ -24,9 +31,31 @@
+ #include <wx/panel.h>
+ #include <wx/gdicmn.h>
+ #include <wx/log.h>
++#include <wx/event.h>
++#include <boost/log/trivial.hpp>
 +#include <boost/algorithm/string/predicate.hpp>
 +#include <boost/algorithm/string/replace.hpp>
 +#include <boost/filesystem.hpp>
@@ -1488,16 +1496,15 @@ index e3c1202b..43331de1 100644
 +#include <wx/stdpaths.h>
  #include <wx/string.h>
  #include <wx/toolbar.h>
- 
- #include <slic3r/GUI/Widgets/WebView.hpp>
- #include <slic3r/GUI/Widgets/WebViewHostDialog.hpp>
- #include "I18N.hpp"
--#include <nlohmann/json.hpp>
++
++#include <slic3r/GUI/Widgets/WebView.hpp>
++#include <slic3r/GUI/Widgets/WebViewHostDialog.hpp>
++#include "I18N.hpp"
 +#include <wx/uri.h>
  #include <wx/utils.h>
  #include <wx/webview.h>
  
-@@ -121,65 +141,1019 @@ static void add_page_strings(wxWebView *webView)
+@@ -128,65 +157,1019 @@ static void add_page_strings(wxWebView *webView)
      webView->AddUserScript(wxString::FromUTF8(WebViewHostDialog::localized_strings_script(strings)));
  }
  
@@ -1953,7 +1960,7 @@ index e3c1202b..43331de1 100644
 +{
 +    if (!m_browser)
 +        return;
-+
+ 
 +    json device = current_creality_device_ref();
 +    std::string address = json_string_value(device, "address");
 +    if (address.empty())
@@ -2464,7 +2471,7 @@ index e3c1202b..43331de1 100644
 +                throw;
 +            }
 +        }
- 
++
 +        // Export/open-url commands may arrive from a still-visible Creality page
 +        // after Orca has refreshed printer state and cleared the active flag.
 +        // Keep those bridge commands alive so Local Files export never becomes a no-op.
@@ -2536,17 +2543,17 @@ index e3c1202b..43331de1 100644
 +        )JS");
 +    }
 +}
-+
+ 
 +void PrinterWebView::create_browser()
 +{
 +    m_browser = WebView::CreateWebView(this, "");
 +    configure_page_scripts();
- 
++
 +#ifdef __linux__
      auto cookiesPath = boost::filesystem::path(data_dir() + "/cache/cookies.db");
      auto wv = static_cast<WebKitWebView*>(m_browser->GetNativeBackend());
      auto wv_ctx = webkit_web_view_get_context(wv);
-@@ -187,6 +1161,7 @@ void PrinterWebView::create_browser()
+@@ -194,6 +1177,7 @@ void PrinterWebView::create_browser()
      webkit_cookie_manager_set_persistent_storage(cookieManager, cookiesPath.c_str(), WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
  #endif
  
@@ -2554,21 +2561,38 @@ index e3c1202b..43331de1 100644
      m_browser->Bind(wxEVT_WEBVIEW_ERROR, &PrinterWebView::OnError, this);
      m_browser->Bind(wxEVT_WEBVIEW_LOADED, &PrinterWebView::OnLoaded, this);
      m_browser->Bind(wxEVT_WEBVIEW_NEWWINDOW, &PrinterWebView::OnNewWindow, this);
-@@ -208,21 +1183,24 @@ void PrinterWebView::reset_browser()
+@@ -224,28 +1208,38 @@ static PrintHostType active_host_type()
  
  void PrinterWebView::load_url(wxString& url, wxString apikey)
  {
 -//    this->Show();
 -//    this->Raise();
--    m_url = url;
--    m_apikey = apikey;
 +    if (m_browser == nullptr)
 +        return;
-+
+     const PrintHostType host_type = active_host_type();
+-    // Selecting the tab requests the same page again; navigating would reload it and drop its state.
+-    if (m_url_loaded && url == m_url && apikey == m_apikey && host_type == m_host_type)
++    std::string connection;
++    if (wxGetApp().preset_bundle != nullptr) {
++        const auto& printer = wxGetApp().preset_bundle->printers.get_edited_preset();
++        connection = json{{"preset", printer.name}, {"host", printer.config.opt_string("print_host")}}.dump();
++    }
++    // Keep the beta's no-reload-on-tab-selection fix, but detect a different Creality printer too.
++    if (m_url_loaded && url == m_requested_url && apikey == m_requested_apikey &&
++        host_type == m_host_type && connection == m_connection_identity)
+         return;
+-
+-    m_url = url;
+-    m_apikey = apikey;
 +    wxString final_url = resolve_url_for_current_printer(url);
-+    m_apikey = m_creality_device_page_active ? wxString() : apikey;
++    m_requested_url = url;
++    m_requested_apikey = apikey;
++    m_connection_identity = connection;
 +    m_url = final_url;
++    m_apikey = m_creality_device_page_active ? wxString() : apikey;
+     m_host_type = host_type;
      m_apikey_sent = false;
+     m_url_loaded = false;
      m_handler = create_printer_webview_handler(*this);
 +    configure_page_scripts();
  
@@ -2588,7 +2612,7 @@ index e3c1202b..43331de1 100644
      UpdateState();
  }
  
-@@ -232,43 +1210,151 @@ bool PrinterWebView::Show(bool show)
+@@ -255,43 +1249,153 @@ bool PrinterWebView::Show(bool show)
          reset_browser();
      if (show && !m_url_deferred.empty()) {
          m_browser->LoadURL(m_url_deferred);
@@ -2622,6 +2646,8 @@ index e3c1202b..43331de1 100644
  void PrinterWebView::update_mode()
  {
      m_browser->EnableAccessToDevTools(wxGetApp().app_config->get_bool("developer_mode"));
++    if (m_creality_device_page_active && m_url_loaded)
++        send_creality_command("is_dark_theme", json(wxGetApp().dark_mode()));
  }
  
 -/**
@@ -2751,7 +2777,7 @@ index e3c1202b..43331de1 100644
      if (window.fetch) {
          const originalFetch = window.fetch;
          window.fetch = function(input, init = {}) {
-@@ -280,9 +1366,6 @@ void PrinterWebView::SendAPIKey()
+@@ -303,9 +1407,6 @@ void PrinterWebView::SendAPIKey()
  )",
                                         m_apikey);
      m_browser->RemoveAllUserScripts();
@@ -2759,9 +2785,9 @@ index e3c1202b..43331de1 100644
 -    // RemoveAllUserScripts causes WebView to forget about our script message handler, 
 -    // so re-add it here.
      m_browser->RemoveScriptMessageHandler("wx");
-     if (m_browser->AddScriptMessageHandler("wx"))
-         WebView::MarkScriptMessageHandlerAdded(m_browser);
-@@ -290,7 +1373,6 @@ void PrinterWebView::SendAPIKey()
+     // Mark before adding: on WKWebView the add yields in RunScript() after registering "wx",
+     // and CreateWebView()'s deferred add, if it runs in that yield, would register it again.
+@@ -314,7 +1415,6 @@ void PrinterWebView::SendAPIKey()
          wxLogError("Could not add script message handler");
  
  #ifdef __linux__
@@ -2769,7 +2795,7 @@ index e3c1202b..43331de1 100644
      inject_vue_resize_workaround(m_browser);
  #endif
      add_page_strings(m_browser);
-@@ -303,62 +1385,44 @@ void PrinterWebView::OnError(wxWebViewEvent &evt)
+@@ -327,64 +1427,47 @@ void PrinterWebView::OnError(wxWebViewEvent &evt)
  {
      auto e = "unknown error";
      switch (evt.GetInt()) {
@@ -2817,10 +2843,12 @@ index e3c1202b..43331de1 100644
 +
 +void PrinterWebView::OnLoaded(wxWebViewEvent &evt)
  {
-     if (evt.GetURL().IsEmpty())
+     // The web view's initial empty document (about:blank on WebKit) is not the requested page.
+     if (evt.GetURL().IsEmpty() || evt.GetURL() == "about:blank")
          return;
 -    //ORCA: url loaded successfully, safe to clear
--    m_url_deferred.clear();
+     m_url_deferred.clear();
+     m_url_loaded = true;
 -    SendAPIKey();
 -  
 -    if (m_handler != nullptr) {
@@ -2863,16 +2891,17 @@ index e3c1202b..43331de1 100644
 +} // namespace GUI
 +} // namespace Slic3r
 diff --git a/src/slic3r/GUI/PrinterWebView.hpp b/src/slic3r/GUI/PrinterWebView.hpp
-index 53c4f305..ce863e82 100644
+index 01ee229b..6d478a8a 100644
 --- a/src/slic3r/GUI/PrinterWebView.hpp
 +++ b/src/slic3r/GUI/PrinterWebView.hpp
-@@ -23,13 +23,16 @@
+@@ -23,14 +23,18 @@
  #include "wx/fs_arc.h"
  #include "wx/fs_mem.h"
  #include "wx/stdpaths.h"
 +#include <nlohmann/json.hpp>
 +#include <boost/optional.hpp>
 +#include <memory>
++#include <string>
  #include <wx/panel.h>
 -#include <wx/tbarbase.h>
 -#include "wx/textctrl.h"
@@ -2880,12 +2909,13 @@ index 53c4f305..ce863e82 100644
  #include <wx/timer.h>
  #include <memory>
  #include "Lazy.hpp"
+ #include "libslic3r/PrintConfig.hpp"
  
 +#include <wx/webview.h>
  
  namespace Slic3r {
  namespace GUI {
-@@ -48,7 +51,10 @@ public:
+@@ -49,7 +53,10 @@ public:
      void OnError(wxWebViewEvent& evt);
      void OnLoaded(wxWebViewEvent& evt);
      void OnNewWindow(wxWebViewEvent& evt);
@@ -2896,7 +2926,7 @@ index 53c4f305..ce863e82 100644
      void reload();
      void update_mode();
  
-@@ -60,21 +66,38 @@ private:
+@@ -61,25 +68,45 @@ private:
      void SendAPIKey();
      void create_browser();
      void reset_browser();
@@ -2908,6 +2938,9 @@ index 53c4f305..ce863e82 100644
 -    // Last url passed to load_url(), reloaded after reset_browser().
 +    void configure_page_scripts();
      wxString m_url;
++    wxString m_requested_url;
++    wxString m_requested_apikey;
++    std::string m_connection_identity;
 +    bool current_printer_is_creality_print() const;
 +    wxString creality_device_page_url() const;
 +    wxString resolve_url_for_current_printer(const wxString& requested_url);
@@ -2928,6 +2961,10 @@ index 53c4f305..ce863e82 100644
 +    wxString m_apikey;
 +    bool m_apikey_sent { false };
      wxString m_url_deferred;
+     // Host type the page was loaded for; it selects the handler, so a change needs a reload.
+     PrintHostType m_host_type{htOctoPrint};
+     // True once the page for m_url has finished loading in m_browser.
+     bool m_url_loaded{false};
 +    bool m_creality_device_page_active { false };
 +    bool m_creality_init_sent { false };
      std::unique_ptr<PrinterWebViewHandler> m_handler;
@@ -3007,27 +3044,18 @@ index 356ce626..31405de5 100644
  }
  
 diff --git a/src/slic3r/Utils/CrealityPrint.cpp b/src/slic3r/Utils/CrealityPrint.cpp
-index 081c5dd5..42bd6a0f 100644
+index ae52facc..10fd551e 100644
 --- a/src/slic3r/Utils/CrealityPrint.cpp
 +++ b/src/slic3r/Utils/CrealityPrint.cpp
-@@ -19,6 +19,7 @@
- #include <unordered_set>
- #include <sstream>
- #include <exception>
-+#include <vector>
- #include <boost/format.hpp>
- #include <boost/foreach.hpp>
- #include <boost/log/trivial.hpp>
-@@ -39,6 +40,8 @@
- #include "slic3r/GUI/format.hpp"
+@@ -39,6 +39,7 @@
+ #include "AsioUtils.hpp"
  #include "Http.hpp"
  #include "libslic3r/AppConfig.hpp"
 +#include "libslic3r/PresetBundle.hpp"
-+#include "Bonjour.hpp"
  #include "slic3r/GUI/BonjourDialog.hpp"
  
  #include <boost/beast/core.hpp>
-@@ -191,17 +194,25 @@ bool CrealityPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn,
+@@ -191,17 +192,25 @@ bool CrealityPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn,
      return res;
  }
  
@@ -3062,7 +3090,7 @@ index 081c5dd5..42bd6a0f 100644
  }
  
  std::string CrealityPrint::safe_filename(const std::string &filename) const
-@@ -212,10 +223,131 @@ std::string CrealityPrint::safe_filename(const std::string &filename) const
+@@ -212,6 +221,127 @@ std::string CrealityPrint::safe_filename(const std::string &filename) const
      return safe_filename;
  }
  
@@ -3187,100 +3215,10 @@ index 081c5dd5..42bd6a0f 100644
 +    return "#0FFFFFF";
 +}
 +
+ // Run every websocket call through run_until_done(), since expires_after() does not apply to synchronous Beast calls.
  static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream>& ws,
-                        const std::string& host_url, const std::string& port)
- {
--    std::string host = Http::get_host_from_url(host_url);
-+    std::string host = creality_host_from_url(host_url);
- 
-     tcp::resolver resolver{ioc};
-     beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(5));
-@@ -228,6 +360,7 @@ static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream
-             req.set(http::field::user_agent,
-                 std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
-         }));
-+    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(5));
-     ws.handshake(host, "/");
-     // K1-family firmware requires TEXT-mode WebSocket frames; K2-family accepts both.
-     // SO_RCVTIMEO is a no-op with Boost.Asio on macOS/Linux (kqueue/epoll); use
-@@ -235,19 +368,59 @@ static void ws_connect(net::io_context& ioc, websocket::stream<beast::tcp_stream
-     ws.text(true);
- }
- 
-+static void ws_write_json(websocket::stream<beast::tcp_stream>& ws, const json& cmd)
-+{
-+    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
-+    ws.write(net::buffer(cmd.dump()));
-+}
-+
-+static bool ws_is_timeout(beast::error_code ec)
-+{
-+    return ec == net::error::would_block
-+        || ec == net::error::timed_out
-+        || ec == beast::error::timeout;
-+}
-+
-+static bool ws_is_clean_end(beast::error_code ec)
-+{
-+    return ec == websocket::error::closed
-+        || ec == net::error::eof
-+        || ec == beast::http::error::end_of_stream;
-+}
-+
-+static bool ws_try_write_json(websocket::stream<beast::tcp_stream>& ws, const json& cmd, const char* label)
-+{
-+    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
-+    beast::error_code ec;
-+    ws.write(net::buffer(cmd.dump()), ec);
-+    if (!ec)
-+        return true;
-+    if (ws_is_clean_end(ec)) {
-+        BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Websocket closed while sending " << label
-+                                   << "; command may have been accepted by firmware";
-+        return false;
-+    }
-+    throw beast::system_error{ec};
-+}
-+
- static std::string ws_send_and_read(websocket::stream<beast::tcp_stream>& ws, const json& cmd, const std::string& expected_key, int max_reads = 20)
- {
--    ws.write(net::buffer(to_string(cmd)));
-+    ws_write_json(ws, cmd);
- 
-+    std::string last_msg;
-     // total caps the loop if the printer sends a continuous stream of heartbeats
-     for (int reads = 0, total = 0; reads < max_reads && total < max_reads * 3; ++total) {
-         beast::flat_buffer buf;
-         beast::error_code ec;
-+        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
-         ws.read(buf, ec);
--        // would_block  = SO_RCVTIMEO fired (Windows/raw sockets)
--        // beast::error::timeout = expires_after() fired (Boost.Beast, macOS/Linux)
--        if (ec == net::error::would_block || ec == beast::error::timeout)
-+        if (ws_is_timeout(ec))
-+            break;
-+        if (ws_is_clean_end(ec)) {
-+            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Websocket closed while waiting for '" << expected_key
-+                                       << "' after " << reads << " message(s)";
-             break;
-+        }
-         if (ec)
-             throw beast::system_error{ec};
-         std::string msg = beast::buffers_to_string(buf.data());
-@@ -259,9 +432,12 @@ static std::string ws_send_and_read(websocket::stream<beast::tcp_stream>& ws, co
-             continue;
-         }
-         ++reads;
-+        last_msg = msg;
-         if (msg.find(expected_key) != std::string::npos)
-             return msg;
-     }
-+    if (!last_msg.empty() && expected_key.empty())
-+        return last_msg;
-     BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: No '" << expected_key << "' response after " << max_reads << " messages";
-     return {};
- }
-@@ -295,6 +471,7 @@ static const std::map<std::string, std::string>& cfs_capable_models()
+                        const std::string& host_url, const std::string& port, std::chrono::milliseconds timeout)
+@@ -322,6 +452,7 @@ static const std::map<std::string, std::string>& cfs_capable_models()
      static const std::map<std::string, std::string> models = {
          {"F008", "K2 Plus"},
          {"F012", "K2 Pro"},
@@ -3288,24 +3226,7 @@ index 081c5dd5..42bd6a0f 100644
          {"F021", "K2"},
          {"F022", "SPARKX i7"},
          {"K1", "K1"},
-@@ -320,7 +497,15 @@ std::string CrealityPrint::model_display_name(const std::string& model)
- bool CrealityPrint::supports_multi_color_print() const
- {
-     query_model();
--    return model_supports_multi_color(m_model);
-+    // Creality printers verified to expose the CFS control path on websocket port 9999.
-+    if (model_supports_multi_color(m_model))
-+        return true;
-+
-+    // Some firmware / host-url combinations do not answer /info correctly, while
-+    // the CFS websocket still returns valid slot data. Treat that as authoritative.
-+    const std::string boxes_json = query_boxes_info();
-+    return boxes_json.find("\"boxsInfo\"") != std::string::npos
-+        || boxes_json.find("\"materialBoxs\"") != std::string::npos;
- }
- 
- std::string CrealityPrint::model_name() const
-@@ -334,27 +519,293 @@ std::string CrealityPrint::model_name() const
+@@ -361,23 +492,290 @@ std::string CrealityPrint::model_name() const
  
  std::string CrealityPrint::query_boxes_info() const
  {
@@ -3313,12 +3234,12 @@ index 081c5dd5..42bd6a0f 100644
 +        try {
 +            net::io_context ioc;
 +            websocket::stream<beast::tcp_stream> ws{ioc};
-+            ws_connect(ioc, ws, m_host, "9999");
++            ws_connect(ioc, ws, m_host, ws_settings.port, ws_settings.connect);
++            beast::get_lowest_layer(ws).expires_after(ws_settings.reply);
 +
 +            json boxs_query = {{"method", "get"}, {"params", {{"boxsInfo", 1}}}};
-+            std::string result = ws_send_and_read(ws, boxs_query, "boxsInfo", 30);
-+            beast::error_code close_ec;
-+            ws.close(websocket::close_code::normal, close_ec);
++            std::string result = ws_send_and_read(ioc, ws, boxs_query, "boxsInfo", 30);
++            ws_close(ioc, ws, ws_settings.close);
 +            if (!result.empty())
 +                return result;
 +
@@ -3449,11 +3370,9 @@ index 081c5dd5..42bd6a0f 100644
      try {
          net::io_context ioc;
          websocket::stream<beast::tcp_stream> ws{ioc};
-         ws_connect(ioc, ws, m_host, "9999");
- 
--        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(10));
--        json boxs_query = {{"method", "get"}, {"params", {{"boxsInfo", 1}}}};
--        std::string result = ws_send_and_read(ws, boxs_query, "boxsInfo");
+         ws_connect(ioc, ws, m_host, ws_settings.port, ws_settings.connect);
++        beast::get_lowest_layer(ws).expires_after(ws_settings.reply);
++
 +        json material = {
 +            {"boxId", slot.box_id},
 +            {"id", slot.material_id},
@@ -3470,31 +3389,21 @@ index 081c5dd5..42bd6a0f 100644
 +            material["boxType"] = slot.box_type;
 +
 +        json cmd = {{"method", "set"}, {"params", {{"modifyMaterial", material}}}};
-+        ws_write_json(ws, cmd);
++        ws_send(ioc, ws, cmd);
 +
 +        beast::flat_buffer buffer;
-+        beast::error_code ec;
-+        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
-+        ws.read(buffer, ec);
-+        if (ec && !ws_is_timeout(ec))
++        const beast::error_code ec = ws_read(ioc, ws, buffer);
++        if (ec && ec != beast::error::timeout && ec != websocket::error::closed && ec != net::error::eof)
 +            throw beast::system_error{ec};
- 
--        // K1 SE closes its side after responding; use the error_code overload so
--        // the resulting EOF does not throw and discard the already-received result.
--        beast::error_code close_ec;
--        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
--        ws.close(websocket::close_code::normal, close_ec);
--        return result;
-+        ws.close(websocket::close_code::normal);
++
++        ws_close(ioc, ws, ws_settings.close);
 +        return true;
-     } catch (std::exception const& e) {
--        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to query boxsInfo: " << e.what();
--        return {};
++    } catch (std::exception const& e) {
 +        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to set CFS material: " << e.what();
 +        msg = wxString::FromUTF8(e.what());
 +        return false;
-     }
- }
++    }
++}
  
 +bool CrealityPrint::reset_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot) const
 +{
@@ -3506,7 +3415,10 @@ index 081c5dd5..42bd6a0f 100644
 +    try {
 +        net::io_context ioc;
 +        websocket::stream<beast::tcp_stream> ws{ioc};
-+        ws_connect(ioc, ws, m_host, "9999");
++        ws_connect(ioc, ws, m_host, ws_settings.port, ws_settings.connect);
+         beast::get_lowest_layer(ws).expires_after(ws_settings.reply);
+-        json boxs_query = {{"method", "get"}, {"params", {{"boxsInfo", 1}}}};
+-        std::string result = ws_send_and_read(ioc, ws, boxs_query, "boxsInfo");
 +
 +        json material = {
 +            {"boxId", slot.box_id},
@@ -3524,18 +3436,19 @@ index 081c5dd5..42bd6a0f 100644
 +            material["boxType"] = slot.box_type;
 +
 +        json cmd = {{"method", "set"}, {"params", {{"modifyMaterial", material}}}};
-+        ws_write_json(ws, cmd);
++        ws_send(ioc, ws, cmd);
 +
 +        beast::flat_buffer buffer;
-+        beast::error_code ec;
-+        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
-+        ws.read(buffer, ec);
-+        if (ec && !ws_is_timeout(ec))
++        const beast::error_code ec = ws_read(ioc, ws, buffer);
++        if (ec && ec != beast::error::timeout && ec != websocket::error::closed && ec != net::error::eof)
 +            throw beast::system_error{ec};
-+
-+        ws.close(websocket::close_code::normal);
+ 
+         ws_close(ioc, ws, ws_settings.close);
+-        return result;
 +        return true;
-+    } catch (std::exception const& e) {
+     } catch (std::exception const& e) {
+-        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to query boxsInfo: " << e.what();
+-        return {};
 +        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to clear CFS material: " << e.what();
 +        msg = wxString::FromUTF8(e.what());
 +        return false;
@@ -3552,7 +3465,8 @@ index 081c5dd5..42bd6a0f 100644
 +    try {
 +        net::io_context ioc;
 +        websocket::stream<beast::tcp_stream> ws{ioc};
-+        ws_connect(ioc, ws, m_host, "9999");
++        ws_connect(ioc, ws, m_host, ws_settings.port, ws_settings.connect);
++        beast::get_lowest_layer(ws).expires_after(ws_settings.reply);
 +
 +        json cmd = {
 +            {"method", "set"},
@@ -3564,24 +3478,22 @@ index 081c5dd5..42bd6a0f 100644
 +                }}
 +            }}
 +        };
-+        ws_write_json(ws, cmd);
++        ws_send(ioc, ws, cmd);
 +
 +        beast::flat_buffer buffer;
-+        beast::error_code ec;
-+        beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(2));
-+        ws.read(buffer, ec);
-+        if (ec && !ws_is_timeout(ec))
++        const beast::error_code ec = ws_read(ioc, ws, buffer);
++        if (ec && ec != beast::error::timeout && ec != websocket::error::closed && ec != net::error::eof)
 +            throw beast::system_error{ec};
 +
-+        ws.close(websocket::close_code::normal);
++        ws_close(ioc, ws, ws_settings.close);
 +        return true;
 +    } catch (std::exception const& e) {
 +        BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Failed to feed/retract CFS material: " << e.what();
 +        msg = wxString::FromUTF8(e.what());
 +        return false;
-+    }
-+}
-+
+     }
+ }
+ 
 +std::string CrealityPrint::get_print_host_webui(DynamicPrintConfig* config)
 +{
 +    if (config == nullptr)
@@ -3607,166 +3519,44 @@ index 081c5dd5..42bd6a0f 100644
 +    return "http://" + host + ":4408/";
 +}
 +
- bool CrealityPrint::start_print(wxString &msg, const std::string &filename, const std::map<std::string, std::string>& extended_info) const
- {
-     try {
-@@ -381,7 +832,12 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                 while (std::getline(iss, part, '\t'))
-                     parts.push_back(part);
-                 if (parts.size() >= 5) {
--                    int box_id = std::stoi(parts[3]);
-+                    int box_id = 0;
-+                    int material_id = 0;
-+                    if (!parse_int(parts[3], box_id) || !parse_int(parts[4], material_id)) {
-+                        BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Ignoring invalid CFS mapping entry: " << val;
-+                        continue;
-+                    }
-                     if (box_id == 0)
-                         use_spool_holder = true;
-                     color_list.push_back({
-@@ -389,18 +845,64 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                         {"type", parts[1]},
-                         {"color", parts[2]},
-                         {"boxId", box_id},
--                        {"materialId", std::stoi(parts[4])}
-+                        {"materialId", material_id}
-+                    });
-+                }
-+            }
-+
-+            if (color_list.empty()) {
-+                int gcode_filament_count = 0;
-+                if (GUI::wxGetApp().preset_bundle) {
-+                    auto full_config = GUI::wxGetApp().preset_bundle->full_config();
-+                    if (auto* filament_colors = full_config.option<ConfigOptionStrings>("filament_colour"))
-+                        gcode_filament_count = static_cast<int>(filament_colors->values.size());
-+                }
-+
-+                const bool allow_ext_spool = gcode_filament_count <= 1;
-+                auto slots = query_cfs_slots(allow_ext_spool);
-+                for (const auto& slot : slots) {
-+                    if (slot.external || slot.type.empty())
-+                        continue;
-+                    color_list.push_back({
-+                        {"id", "T1" + std::string(1, static_cast<char>('A' + static_cast<int>(color_list.size())))},
-+                        {"type", slot.type},
-+                        {"color", slot.color},
-+                        {"boxId", slot.box_id},
-+                        {"materialId", slot.material_id}
-                     });
-+                    if (gcode_filament_count > 0 && color_list.size() >= static_cast<size_t>(gcode_filament_count))
-+                        break;
-+                }
-+
-+                if (color_list.empty() && allow_ext_spool) {
-+                    for (const auto& slot : slots) {
-+                        if (!slot.external)
-+                            continue;
-+                        use_spool_holder = true;
-+                        color_list.push_back({
-+                            {"id", "T1A"},
-+                            {"type", slot.type},
-+                            {"color", slot.color},
-+                            {"boxId", slot.box_id},
-+                            {"materialId", slot.material_id}
-+                        });
-+                        break;
-+                    }
-+                }
-+
-+                if (color_list.empty()) {
-+                    msg = _L("Creality CFS filament mapping is missing. Use Upload only, or reopen the dialog after the printer/CFS is reachable.");
-+                    return false;
-                 }
+ std::vector<std::string> CrealityPrint::start_print_commands(bool                                      multi_color,
+                                                              const std::string&                        gcode_path,
+                                                              const std::map<std::string, std::string>& extended_info)
+@@ -399,7 +797,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+             while (std::getline(iss, part, '\t'))
+                 parts.push_back(part);
+             if (parts.size() >= 5) {
+-                int box_id = std::stoi(parts[3]);
++                int box_id = 0, material_id = 0;
++                if (!parse_int(parts[3], box_id) || !parse_int(parts[4], material_id))
++                    throw std::invalid_argument("Invalid Creality CFS slot mapping.");
+                 if (box_id == 0)
+                     use_spool_holder = true;
+                 color_list.push_back({
+@@ -407,7 +807,7 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+                     {"type", parts[1]},
+                     {"color", parts[2]},
+                     {"boxId", box_id},
+-                    {"materialId", std::stoi(parts[4])}
++                    {"materialId", material_id}
+                 });
              }
- 
--            int enable_self_test = 0;
--            {
--                auto it = extended_info.find("enableSelfTest");
--                if (it != extended_info.end())
--                    enable_self_test = std::stoi(it->second);
-+            if (use_spool_holder && color_list.size() > 1) {
-+                msg = _L("External spool printing cannot be mixed with CFS or multiple mapped filaments.");
-+                return false;
-             }
- 
-+            int enable_self_test = get_extended_info_int(extended_info, "enableSelfTest", 0);
-+
-             if (use_spool_holder) {
-                 json cmd = {
-                     {"method", "set"},
-@@ -409,7 +911,7 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                         {"enableSelfTest", enable_self_test}
-                     }}
-                 };
--                ws.write(net::buffer(to_string(cmd)));
-+                ws_try_write_json(ws, cmd, "opGcodeFile");
-             } else {
-                 json color_match = {
-                     {"method", "set"},
-@@ -420,7 +922,7 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                         }}
-                     }}
-                 };
--                ws.write(net::buffer(to_string(color_match)));
-+                bool color_match_sent = ws_try_write_json(ws, color_match, "colorMatch");
- 
-                 json multi_color_print = {
-                     {"method", "set"},
-@@ -431,7 +933,8 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                         }}
-                     }}
-                 };
--                ws.write(net::buffer(to_string(multi_color_print)));
-+                if (color_match_sent)
-+                    ws_try_write_json(ws, multi_color_print, "multiColorPrint");
-             }
-         } else {
-             json cmd = {
-@@ -440,22 +943,25 @@ bool CrealityPrint::start_print(wxString &msg, const std::string &filename, cons
-                     {"opGcodeFile", "printprt:" + gcode_path}
-                 }}
-             };
--            ws.write(net::buffer(to_string(cmd)));
-+            ws_try_write_json(ws, cmd, "opGcodeFile");
- 
-             // K1-family firmware closes the WebSocket right after accepting the
-             // start command, so a blocking read here surfaces a benign
-             // "End of file [asio.misc:2]" even though the print already started
-             // (the command is delivered by write()). Read best-effort, ignore errors.
-             beast::flat_buffer buffer;
--            beast::error_code  read_ec;
--            ws.read(buffer, read_ec);
-+            beast::error_code ec;
-+            beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
-+            ws.read(buffer, ec);
-+            if (ec && !ws_is_timeout(ec) && !ws_is_clean_end(ec))
-+                throw beast::system_error{ec};
          }
+@@ -416,6 +816,9 @@ std::vector<std::string> CrealityPrint::start_print_commands(bool
+             enable_self_test = std::stoi(it->second);
+     }
  
--        // Same reason: the printer may have already closed the connection. A close
--        // error here is not a failure — the start command was sent above.
-         beast::error_code close_ec;
-         beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(3));
-         ws.close(websocket::close_code::normal, close_ec);
-+        if (close_ec && !ws_is_clean_end(close_ec))
-+            BOOST_LOG_TRIVIAL(warning) << "CrealityPrint: Ignoring websocket close error after start command: " << close_ec.message();
-         return true;
-     } catch(std::exception const& e) {
-         BOOST_LOG_TRIVIAL(error) << "CrealityPrint: Error starting print: " << e.what();
++    if (use_spool_holder && color_list.size() > 1)
++        throw std::invalid_argument("External spool printing cannot be mixed with CFS or multiple mapped filaments.");
++
+     std::vector<std::string> commands;
+     // Only a mapping onto CFS slots starts a multi-color job. No mapping means the
+     // printer listed no slots (no CFS attached, or boxsInfo unanswered): start from
 diff --git a/src/slic3r/Utils/CrealityPrint.hpp b/src/slic3r/Utils/CrealityPrint.hpp
-index 2c3c554c..d07b8bc2 100644
+index 213ecab7..0877366b 100644
 --- a/src/slic3r/Utils/CrealityPrint.hpp
 +++ b/src/slic3r/Utils/CrealityPrint.hpp
-@@ -3,6 +3,7 @@
- 
- #include <map>
- #include <string>
-+#include <vector>
- #include <wx/string.h>
- #include <boost/optional.hpp>
- #include <boost/asio/ip/address.hpp>
-@@ -37,9 +38,37 @@ public:
+@@ -39,7 +39,33 @@ public:
      // value: an F-code on the K2 platform, a literal name on K1-family.
      static bool model_supports_multi_color(const std::string& model);
      static std::string model_display_name(const std::string& model);
@@ -3798,13 +3588,18 @@ index 2c3c554c..d07b8bc2 100644
 +    bool reset_cfs_slot_filament(wxString& msg, const CfsSlotInfo& slot) const;
 +    bool feed_or_retract_cfs_slot(wxString& msg, const CfsSlotInfo& slot, bool feed) const;
      std::string model_name() const;
+     // The WebSocket commands that start gcode_path, built from the send dialog's
+     // extended_info (enableSelfTest and the colorMatch_<n> slot mapping).
+@@ -47,6 +73,8 @@ public:
+                                                          const std::string&                        gcode_path,
+                                                          const std::map<std::string, std::string>& extended_info);
  
 +    static std::string get_print_host_webui(DynamicPrintConfig* config);
 +
  protected:
      virtual void set_auth(Http& http) const;
- private:
-@@ -58,4 +87,4 @@ private:
+ 
+@@ -74,4 +102,4 @@ private:
  };
  } // namespace Slic3r
  

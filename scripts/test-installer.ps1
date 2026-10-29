@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory)][string]$Installer,
     [Parameter(Mandatory)][string]$CleanDirectory,
     [Parameter(Mandatory)][string]$ManifestPath,
-    [Parameter(Mandatory)][string]$WorkDirectory
+    [Parameter(Mandatory)][string]$WorkDirectory,
+    [switch]$SmokeTest
 )
 $ErrorActionPreference = 'Stop'
 $installer = (Resolve-Path $Installer).Path
@@ -52,6 +53,21 @@ foreach ($file in $manifest.Files) {
     }
 }
 Run-Patcher @('--install') # idempotent exact-patch verification
+if ($SmokeTest) {
+    # Load the real rebuilt core and its runtime DLLs in a separate data directory.
+    $appData = Join-Path $work 'isolated-orca-data'
+    $smoke = Start-Process -FilePath (Join-Path $target 'orca-slicer.exe') `
+        -ArgumentList @('--help', '--datadir', "`"$appData`"") `
+        -WorkingDirectory $target -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput (Join-Path $work 'orca-help.txt') `
+        -RedirectStandardError (Join-Path $work 'orca-help-errors.txt')
+    if (!$smoke.WaitForExit(45000)) {
+        $smoke.Kill()
+        throw 'Patched Orca CLI startup timed out.'
+    }
+    $smoke.Refresh()
+    if ($smoke.ExitCode -ne 0) { throw "Patched Orca CLI could not load (exit $($smoke.ExitCode))." }
+}
 # Modified resources must fail verification.
 $resource = $manifest.Files | Where-Object RelativePath -Like 'resources/*' | Select-Object -First 1
 $resourcePath = Join-Path $target $resource.RelativePath
