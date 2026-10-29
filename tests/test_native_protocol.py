@@ -32,6 +32,7 @@ prefix = r'''
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -43,7 +44,7 @@ using json = nlohmann::json;
 #define L(x) x
 #define _(x) x
 namespace Slic3r { using SlicingError = std::runtime_error; }
-void require(bool pass, const char* message) { if (!pass) throw std::runtime_error(message); }
+void require(bool pass, const char* message) { if (!pass) { std::cerr << "FAIL: " << message << std::endl; std::exit(1); } }
 '''
 host = 'class CrealityPrint {\npublic:\n'+slot+r'''
     std::string response;

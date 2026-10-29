@@ -71,6 +71,8 @@ It does not publish a GitHub release or claim printer hardware validation.
 Locally verified during this port:
 
 - Exact source patch applies to a fresh official 2.5 beta checkout.
+- Static profile checks pass across all 71 vendors, with no errors or warnings;
+  the patched Creality bundle version advances from 02.03.02.87 to 02.03.02.88.
 - Every inherited web asset matches the pinned 2.4.2 manifest.
 - A read-only live F018 response was parsed into four loaded CFS slots and an
   external spool entry. No printer settings or motion commands were changed.
@@ -81,7 +83,10 @@ Locally verified during this port:
   0.35, 0.7, 1, 1.3 and 2. Exported Creality/Hi multipliers always remain 1;
   Default does not compound with Fast, and unrelated hosts retain upstream behavior.
 - JavaScript bridge tests pass for startup, delayed availability, repeated script
-  installation and a newly recreated browser.
+  installation, a newly recreated browser, and alias restoration after repeated
+  Edge/WebKit reloads without duplicate command delivery.
+- Replacing the patched export block with upstream's block makes the compiled
+  regression fail specifically on the required multiplier of 1.
 - Installer compiles with 2.5 branding against a synthetic test payload.
 - Fixture tests pass for dry run, stale markers, install, every payload hash,
   idempotence, resource tampering, modified-core rollback protection, complete
