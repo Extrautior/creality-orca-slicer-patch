@@ -1,3 +1,29 @@
+diff --git a/CREALITY_HI_CFS_PATCH.md b/CREALITY_HI_CFS_PATCH.md
+new file mode 100644
+index 00000000..64c84a53
+--- /dev/null
++++ b/CREALITY_HI_CFS_PATCH.md
+@@ -0,0 +1,20 @@
++# Creality Hi / CFS source port for OrcaSlicer 2.5.0-beta
++
++Base: `345efec64c7b95a05ce5cf96df0dde66a158835c` (official v2.5.0-beta).
++
++Preserves the Creality device-page bridge, CFS sync/edit/feed/retract, external spool mapping,
++camera recovery, flush-volume metadata, and Hi 0.4/0.6 profiles from the 2.4.2 patch.
++Keeps 2.5 lazy webview recreation, script-handler tracking, missing-connection translations,
++the new filament-list refresh, shared Creality LAN discovery model table, K1 text frames
++and heartbeat acknowledgements, and the refactored timelapse generator.
++
++Default and Fast purge multipliers are baked into the exported flush matrix exactly once.
++Both exported multiplier arrays are normalized for Creality hosts. Timelapse Off also
++guards the new shared generator. Browser recreation reinstalls the Creality page scripts.
++
++Source application is not a hardware or binary compatibility certification. Build and run
++the installer round-trip checks, then validate on a Creality Hi/CFS before publishing.
++The bundled web assets must match the pinned 2.4.2 payload manifest; older core binaries
++must never be used as the 2.5 payload.
++
++Also preserves beta async WebSocket deadlines, command batching, layer-change placeholders and no-reload tab selection.
 diff --git a/resources/profiles/Creality.json b/resources/profiles/Creality.json
 index e2fbd27d..e7ddd66e 100644
 --- a/resources/profiles/Creality.json
@@ -103,7 +129,7 @@ index 761d11c8..3a8226ca 100644
      #include <commctrl.h>
      #ifdef SLIC3R_GUI
 diff --git a/src/libslic3r/GCode.cpp b/src/libslic3r/GCode.cpp
-index 7a51938e..8b57b145 100644
+index 7a51938e..dd69e3a1 100644
 --- a/src/libslic3r/GCode.cpp
 +++ b/src/libslic3r/GCode.cpp
 @@ -2839,6 +2839,11 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
@@ -221,7 +247,7 @@ index 7a51938e..8b57b145 100644
      for (const std::string& key : cfg.keys()) {
 -        if (!is_banned(key) && !cfg.option(key)->is_nil()) {
 +        if (!is_banned(key) && !(is_creality_hi && is_creality_hi_metadata(key)) && !cfg.option(key)->is_nil()) {
-+            if (key == "flush_volumes_matrix")
++            if (key == "flush_volumes_matrix" && (is_creality_print_host || is_creality_hi))
 +                ss << "; flush_volumes_changed = 1\n";
              if (key == "wipe_tower_x" || key == "wipe_tower_y") {
                  ss << std::fixed << std::setprecision(3) << "; " << key << " = " << dynamic_cast<const ConfigOptionFloats*>(cfg.option(key))->get_at(print.get_plate_index()) << "\n";
