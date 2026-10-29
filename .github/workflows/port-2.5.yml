@@ -1,7 +1,5 @@
 name: Orca 2.5 Windows compatibility
 on:
-  push:
-    branches: [codex/orca-2.5-alpha]
   pull_request:
     paths: ['patches/creality-orca-2.5.0-beta.patch', 'scripts/**', 'installer/**', 'tests/**', 'config/**', '.github/workflows/port-2.5.yml']
   workflow_dispatch:
@@ -11,26 +9,6 @@ concurrency:
   group: orca-25-beta-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
-  cancel-superseded-builds:
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Cancel older builds of this patch branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          CURRENT_RUN: ${{ github.run_id }}
-          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-        shell: bash
-        run: |
-          gh api "repos/$GH_REPO/actions/workflows/port-2.5.yml/runs?per_page=50" \
-            --jq '.workflow_runs[] | select(.head_branch == "codex/orca-2.5-alpha") | select(.status == "queued" or .status == "pending" or .status == "in_progress" or .status == "waiting") | [.id, .head_sha] | @tsv' |
-          while IFS=$'\t' read -r run_id head; do
-            if [[ "$run_id" != "$CURRENT_RUN" && "$head" != "$CURRENT_HEAD" ]]; then
-              gh api --method POST "repos/$GH_REPO/actions/runs/$run_id/cancel" || true
-            fi
-          done
   protocol:
     runs-on: ubuntu-latest
     steps:
