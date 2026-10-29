@@ -509,10 +509,10 @@ index cd7e44b5..41513571 100644
      if (printer_structure_opt && printer_structure_opt->value == PrinterStructure::psI3) {
          msg_text += _(L(" But machines with I3 structure will not generate timelapse videos."));
 diff --git a/src/slic3r/GUI/GCodeViewer.cpp b/src/slic3r/GUI/GCodeViewer.cpp
-index fbfd44a4..fc8d18e6 100644
+index fbfd44a4..c5d806b4 100644
 --- a/src/slic3r/GUI/GCodeViewer.cpp
 +++ b/src/slic3r/GUI/GCodeViewer.cpp
-@@ -191,6 +191,49 @@ static const std::vector<std::pair<std::string, libvgcode::EViewType>>& view_typ
+@@ -191,6 +191,58 @@ static const std::vector<std::pair<std::string, libvgcode::EViewType>>& view_typ
      return map;
  }
  
@@ -532,11 +532,20 @@ index fbfd44a4..fc8d18e6 100644
 +    if (filament_change_count_map.empty() || filaments_count == 0)
 +        return estimated_flush_volumes;
 +
-+    const auto* matrix_option = wxGetApp().preset_bundle->project_config.option<ConfigOptionFloats>("flush_volumes_matrix");
++    const auto config = wxGetApp().preset_bundle->full_config();
++    const auto* host = config.option<ConfigOptionEnum<PrintHostType>>("host_type");
++    const auto* model = config.option<ConfigOptionString>("printer_model");
++    if ((!host || host->value != htCrealityPrint) && (!model || model->value != "Creality Hi"))
++        return estimated_flush_volumes;
++    const auto* matrix_option = config.option<ConfigOptionFloats>("flush_volumes_matrix");
 +    if (matrix_option == nullptr || matrix_option->values.empty())
 +        return estimated_flush_volumes;
 +
 +    const std::vector<double> flush_matrix = get_flush_volumes_matrix(matrix_option->values, 0, 1);
++    const auto* mode = config.option<ConfigOptionEnum<PrimeVolumeMode>>("prime_volume_mode");
++    const auto* multipliers = config.option<ConfigOptionFloats>(
++        mode && mode->value == PrimeVolumeMode::pvmFast ? "flush_multiplier_fast" : "flush_multiplier");
++    const double multiplier = multipliers && !multipliers->values.empty() ? multipliers->values.front() : 1.0;
 +    const size_t matrix_side = static_cast<size_t>(std::sqrt(static_cast<double>(flush_matrix.size())) + EPSILON);
 +    if (matrix_side == 0 || matrix_side * matrix_side != flush_matrix.size())
 +        return estimated_flush_volumes;
@@ -553,7 +562,7 @@ index fbfd44a4..fc8d18e6 100644
 +        if (from >= usable_filaments || to >= usable_filaments || from == to)
 +            continue;
 +
-+        estimated_flush_volumes[to] += flush_matrix[from * matrix_side + to] * static_cast<double>(change_count);
++        estimated_flush_volumes[to] += std::round(flush_matrix[from * matrix_side + to] * multiplier) * static_cast<double>(change_count);
 +    }
 +
 +    return estimated_flush_volumes;
@@ -562,7 +571,7 @@ index fbfd44a4..fc8d18e6 100644
  // Find an index of a value in a sorted vector, which is in <z-eps, z+eps>.
  // Returns -1 if there is no such member.
  static int find_close_layer_idx(const std::vector<double> &zs, double &z, double eps)
-@@ -3578,7 +3621,8 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+@@ -3578,7 +3630,8 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
          PartPlateList& plate_list = wxGetApp().plater()->get_partplate_list();
          for (auto plate : plate_list.get_nonempty_plate_list())
          {
@@ -572,7 +581,7 @@ index fbfd44a4..fc8d18e6 100644
              auto plate_extruders = plate->get_extruders(true);
              auto max_extruders_colors = wxGetApp().plater()->get_extruders_colors().size();
              for (size_t extruder_id : plate_extruders) {
-@@ -3613,6 +3657,17 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
+@@ -3613,6 +3666,17 @@ void GCodeViewer::render_all_plates_stats(const std::vector<const GCodeProcessor
                      support_volume_of_extruders_all_plates[extruder_id] += support_volume;
                  }
              }
@@ -590,7 +599,7 @@ index fbfd44a4..fc8d18e6 100644
              const PrintEstimatedStatistics::Mode& plate_time_mode = plate_print_statistics.modes[static_cast<size_t>(m_viewer.get_time_mode())];
              total_time_all_plates += plate_time_mode.time;
  
-@@ -4499,6 +4554,12 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+@@ -4499,6 +4563,12 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
      double unit_conver = imperial_units ? GizmoObjectManipulation::oz_to_g : 1;
      std::vector<double> used_filaments_m;
      std::vector<double> used_filaments_g;
@@ -603,7 +612,7 @@ index fbfd44a4..fc8d18e6 100644
  
      // used filament statistics
      for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
-@@ -4534,18 +4595,22 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
+@@ -4534,18 +4604,22 @@ void GCodeViewer::render_legend(float &legend_height, int canvas_width, int canv
      }
  
      for (size_t extruder_id : m_viewer.get_used_extruders_ids()) {
@@ -714,7 +723,7 @@ index 9c4f3287..e2a84a25 100644
  
  int ObjectDataViewModel::GetDefaultExtruderIdx(wxDataViewItem item)
 diff --git a/src/slic3r/GUI/Plater.cpp b/src/slic3r/GUI/Plater.cpp
-index 6e4d3e34..07bf99a8 100644
+index 6e4d3e34..19949fc7 100644
 --- a/src/slic3r/GUI/Plater.cpp
 +++ b/src/slic3r/GUI/Plater.cpp
 @@ -369,7 +369,7 @@ static std::string get_diameter_string(float diameter)
@@ -726,15 +735,6 @@ index 6e4d3e34..07bf99a8 100644
      }
      return s;
  }
-@@ -521,7 +521,7 @@ SlicedInfo::SlicedInfo(wxWindow *parent) :
-     };
- 
-     init_info_label(_L("Used Filament (m)"));
--    init_info_label(_L("Used Filament (mm³)"));
-+    init_info_label(_L("Used Filament (mm┬│)"));
-     init_info_label(_L("Used Filament (g)"));
-     init_info_label(_L("Used Materials"));
-     init_info_label(_L("Cost"));
 @@ -2756,6 +2756,8 @@ void Sidebar::update_sync_ams_btn_enable(wxUpdateUIEvent &e)
           //btn_sync->Enable(!m_last_slice_state);
           p->m_printer_bbl_sync->Enable(!m_last_slice_state);
@@ -1103,18 +1103,6 @@ index 6e4d3e34..07bf99a8 100644
  }
  
  
-@@ -23569,9 +23753,9 @@ void Plater::show_object_info()
-         volume_val *= std::fabs(t.matrix().block(0, 0, 3, 3).determinant());
-     volume_val = volume_val * pow(koef,3);
-     if (imperial_units)
--        info_text += (boost::format(_utf8(L("Volume: %1% in³\n"))) %volume_val).str();
-+        info_text += (boost::format(_utf8(L("Volume: %1% in┬│\n"))) %volume_val).str();
-     else
--        info_text += (boost::format(_utf8(L("Volume: %1% mm³\n"))) %volume_val).str();
-+        info_text += (boost::format(_utf8(L("Volume: %1% mm┬│\n"))) %volume_val).str();
-     info_text += (boost::format(_utf8(L("Triangles: %1%\n"))) %face_count).str();
- 
-     wxString info_manifold;
 diff --git a/src/slic3r/GUI/Plater.hpp b/src/slic3r/GUI/Plater.hpp
 index 564addb0..a1aa6459 100644
 --- a/src/slic3r/GUI/Plater.hpp
@@ -3018,56 +3006,6 @@ index 356ce626..31405de5 100644
      render(dc);
  }
  
-diff --git a/src/slic3r/GUI/WipeTowerDialog.cpp b/src/slic3r/GUI/WipeTowerDialog.cpp
-index 3aa8fddc..8dd865fe 100644
---- a/src/slic3r/GUI/WipeTowerDialog.cpp
-+++ b/src/slic3r/GUI/WipeTowerDialog.cpp
-@@ -270,6 +270,37 @@ bool is_flush_config_modified()
-     return has_modify;
- }
- 
-+static bool is_creality_print_host()
-+{
-+    PresetBundle* preset_bundle = wxGetApp().preset_bundle;
-+    if (!preset_bundle)
-+        return false;
-+
-+    const DynamicPrintConfig& cfg = preset_bundle->printers.get_edited_preset().config;
-+    const auto* host_type_opt = cfg.option<ConfigOptionEnum<PrintHostType>>("host_type");
-+    return host_type_opt && host_type_opt->value == htCrealityPrint;
-+}
-+
-+static void bake_flush_multipliers_into_matrix_for_creality(std::vector<double>& matrix, std::vector<double>& multipliers)
-+{
-+    if (!is_creality_print_host() || matrix.empty() || multipliers.empty())
-+        return;
-+
-+    const size_t heads_count = multipliers.size();
-+    if (matrix.size() % heads_count != 0)
-+        return;
-+
-+    const size_t values_per_head = matrix.size() / heads_count;
-+    for (size_t head = 0; head < heads_count; ++head) {
-+        const double multiplier = multipliers[head];
-+        const size_t begin = head * values_per_head;
-+        const size_t end = begin + values_per_head;
-+        for (size_t i = begin; i < end; ++i)
-+            matrix[i] = std::round(std::clamp(matrix[i] * multiplier, 0.0, static_cast<double>(g_max_flush_volume)));
-+        multipliers[head] = 1.0;
-+    }
-+}
-+
- void open_flushing_dialog(wxEvtHandler *parent, const wxEvent &event)
- {
-     auto                      &project_config = wxGetApp().preset_bundle->project_config;
-@@ -279,6 +310,7 @@ void open_flushing_dialog(wxEvtHandler *parent, const wxEvent &event)
-     if (dlg.GetSubmitFlag()) {
-         auto matrix = dlg.GetFlattenMatrix();
-         auto flush_multipliers = dlg.GetMultipliers();
-+        bake_flush_multipliers_into_matrix_for_creality(matrix, flush_multipliers);
-         (project_config.option<ConfigOptionFloats>("flush_volumes_matrix"))->values = std::vector<double>(matrix.begin(), matrix.end());
-         (project_config.option<ConfigOptionFloats>("flush_multiplier"))->values = std::vector<double>(flush_multipliers.begin(), flush_multipliers.end());
-         bool flushing_volume_modify = is_flush_config_modified();
 diff --git a/src/slic3r/Utils/CrealityPrint.cpp b/src/slic3r/Utils/CrealityPrint.cpp
 index 081c5dd5..42bd6a0f 100644
 --- a/src/slic3r/Utils/CrealityPrint.cpp
