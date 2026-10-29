@@ -37,16 +37,10 @@ index e2fbd27d..e7ddd66e 100644
  	"description": "Creality configurations",
  	"machine_model_list": [
 diff --git a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json
-index 613089a7..cb92a0fe 100644
+index 613089a7..34b881f6 100644
 --- a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	
 +++ b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	
-@@ -132,12 +132,13 @@
- 	],
- 	"single_extruder_multi_material": "1",
- 	"machine_load_filament_time": "105",
-+	"prime_volume": "2",
- 	"machine_pause_gcode": "PAUSE",
- 	"change_filament_gcode": "G2 Z{z_after_toolchange + 0.4} I0.86 J0.86 P1 F10000 ; spiral lift a little from second lift\nG1 X260 Y180 F30000\nG1 Z{z_after_toolchange} F600",
+@@ -137,7 +137,7 @@
  	"default_filament_profile": [
  		"Generic PLA @Creality Hi-all"
  	],
@@ -55,7 +49,7 @@ index 613089a7..cb92a0fe 100644
  	"machine_end_gcode": "G1 X0 Y180 F8000\nEND_PRINT",
  	"scan_first_layer": "0",
  	"thumbnails": [
-@@ -154,6 +155,11 @@
+@@ -154,6 +154,11 @@
  	"cooling_tube_length": "0",
  	"cooling_tube_retraction": "0",
  	"creality_flush_time": "105",
@@ -67,7 +61,7 @@ index 613089a7..cb92a0fe 100644
  	"disable_m73": "0",
  	"emit_machine_limits_to_gcode": "1",
  	"extra_loading_move": "0",
-@@ -173,8 +179,6 @@
+@@ -173,8 +178,6 @@
  	"parking_pos_retraction": "0",
  	"preferred_orientation": "0",
  	"prime_tower_position_type": "Left Upper",
@@ -77,16 +71,10 @@ index 613089a7..cb92a0fe 100644
  	"printhost_authorization_type": "key",
  	"printhost_ssl_ignore_revoke": "0",
 diff --git a/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json
-index 95d55f0a..1826d1b5 100644
+index 95d55f0a..00e458c8 100644
 --- a/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json	
 +++ b/resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json	
-@@ -132,12 +132,13 @@
- 	],
- 	"single_extruder_multi_material": "1",
- 	"machine_load_filament_time": "105",
-+	"prime_volume": "2",
- 	"machine_pause_gcode": "PAUSE",
- 	"change_filament_gcode": "G2 Z{z_after_toolchange + 0.4} I0.86 J0.86 P1 F10000 ; spiral lift a little from second lift\nG1 X260 Y180 F30000\nG1 Z{z_after_toolchange} F600",
+@@ -137,7 +137,7 @@
  	"default_filament_profile": [
  		"Generic PLA @Creality Hi-all"
  	],
@@ -95,7 +83,7 @@ index 95d55f0a..1826d1b5 100644
  	"machine_end_gcode": "G1 X0 Y180 F8000\nEND_PRINT",
  	"scan_first_layer": "0",
  	"thumbnails": [
-@@ -154,6 +155,11 @@
+@@ -154,6 +154,11 @@
  	"cooling_tube_length": "0",
  	"cooling_tube_retraction": "0",
  	"creality_flush_time": "105",
@@ -107,7 +95,7 @@ index 95d55f0a..1826d1b5 100644
  	"disable_m73": "0",
  	"emit_machine_limits_to_gcode": "1",
  	"extra_loading_move": "0",
-@@ -173,8 +179,6 @@
+@@ -173,8 +178,6 @@
  	"parking_pos_retraction": "0",
  	"preferred_orientation": "0",
  	"prime_tower_position_type": "Left Upper",
