@@ -58,7 +58,7 @@ if ($SmokeTest) {
     $appData = Join-Path $work 'isolated-orca-data'
     $smoke = Start-Process -FilePath (Join-Path $target 'orca-slicer.exe') `
         -ArgumentList @('--help', '--datadir', "`"$appData`"") `
-        -WorkingDirectory $target -WindowStyle Hidden -PassThru `
+        -WorkingDirectory $work -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $work 'orca-help.txt') `
         -RedirectStandardError (Join-Path $work 'orca-help-errors.txt')
     if (!$smoke.WaitForExit(45000)) {
