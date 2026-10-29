@@ -1,29 +1,3 @@
-diff --git a/CREALITY_HI_CFS_PATCH.md b/CREALITY_HI_CFS_PATCH.md
-new file mode 100644
-index 00000000..64c84a53
---- /dev/null
-+++ b/CREALITY_HI_CFS_PATCH.md
-@@ -0,0 +1,20 @@
-+# Creality Hi / CFS source port for OrcaSlicer 2.5.0-beta
-+
-+Base: `345efec64c7b95a05ce5cf96df0dde66a158835c` (official v2.5.0-beta).
-+
-+Preserves the Creality device-page bridge, CFS sync/edit/feed/retract, external spool mapping,
-+camera recovery, flush-volume metadata, and Hi 0.4/0.6 profiles from the 2.4.2 patch.
-+Keeps 2.5 lazy webview recreation, script-handler tracking, missing-connection translations,
-+the new filament-list refresh, shared Creality LAN discovery model table, K1 text frames
-+and heartbeat acknowledgements, and the refactored timelapse generator.
-+
-+Default and Fast purge multipliers are baked into the exported flush matrix exactly once.
-+Both exported multiplier arrays are normalized for Creality hosts. Timelapse Off also
-+guards the new shared generator. Browser recreation reinstalls the Creality page scripts.
-+
-+Source application is not a hardware or binary compatibility certification. Build and run
-+the installer round-trip checks, then validate on a Creality Hi/CFS before publishing.
-+The bundled web assets must match the pinned 2.4.2 payload manifest; older core binaries
-+must never be used as the 2.5 payload.
-+
-+Also preserves beta async WebSocket deadlines, command batching, layer-change placeholders and no-reload tab selection.
 diff --git a/resources/profiles/Creality.json b/resources/profiles/Creality.json
 index e2fbd27d..e7ddd66e 100644
 --- a/resources/profiles/Creality.json
@@ -1460,10 +1434,10 @@ index c348cb0b..52d89396 100644
 +#endif
 \ No newline at end of file
 diff --git a/src/slic3r/GUI/PrinterWebView.cpp b/src/slic3r/GUI/PrinterWebView.cpp
-index dd597ad3..d5e80f68 100644
+index dd597ad3..f4b6c238 100644
 --- a/src/slic3r/GUI/PrinterWebView.cpp
 +++ b/src/slic3r/GUI/PrinterWebView.cpp
-@@ -4,6 +4,10 @@
+@@ -4,7 +4,12 @@
  #include "I18N.hpp"
  
  #include "slic3r/GUI/PrinterWebView.hpp"
@@ -1472,9 +1446,11 @@ index dd597ad3..d5e80f68 100644
 +#include "libslic3r/Utils.hpp"
 +#include "libslic3r_version.h"
  #include "slic3r/GUI/GUI_App.hpp"
++#include "slic3r/GUI/GUI.hpp"
  #include "slic3r/GUI/MainFrame.hpp"
  #include <slic3r/GUI/Widgets/WebView.hpp>
-@@ -14,6 +18,9 @@
+ #include <slic3r/GUI/Widgets/WebViewHostDialog.hpp>
+@@ -14,6 +19,9 @@
  #include "libslic3r/Utils.hpp"
  #include "libslic3r/Config.hpp"
  #include "libslic3r/PresetBundle.hpp"
@@ -1484,7 +1460,7 @@ index dd597ad3..d5e80f68 100644
  
  #include <boost/log/trivial.hpp>
  #include <boost/filesystem/path.hpp>
-@@ -24,9 +31,31 @@
+@@ -24,9 +32,31 @@
  #include <wx/panel.h>
  #include <wx/gdicmn.h>
  #include <wx/log.h>
@@ -1516,7 +1492,7 @@ index dd597ad3..d5e80f68 100644
  #include <wx/utils.h>
  #include <wx/webview.h>
  
-@@ -128,65 +157,1019 @@ static void add_page_strings(wxWebView *webView)
+@@ -128,65 +158,1032 @@ static void add_page_strings(wxWebView *webView)
      webView->AddUserScript(wxString::FromUTF8(WebViewHostDialog::localized_strings_script(strings)));
  }
  
@@ -1764,6 +1740,7 @@ index dd597ad3..d5e80f68 100644
  
  PrinterWebView::~PrinterWebView()
  {
++    m_alive->store(false);
      BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << " Start";
 +    m_creality_camera_keepalive_timer.Stop();
      SetEvtHandlerEnabled(false);
@@ -1972,7 +1949,7 @@ index dd597ad3..d5e80f68 100644
 +{
 +    if (!m_browser)
 +        return;
- 
++
 +    json device = current_creality_device_ref();
 +    std::string address = json_string_value(device, "address");
 +    if (address.empty())
@@ -2105,10 +2082,8 @@ index dd597ad3..d5e80f68 100644
 +    return ok ? state : boost::none;
 +}
 +
-+bool PrinterWebView::set_creality_logo_light(bool on) const
++bool PrinterWebView::set_creality_logo_light(const std::string& address, bool on)
 +{
-+    json device = current_creality_device_ref();
-+    std::string address = json_string_value(device, "address");
 +    if (address.empty())
 +        return false;
 +
@@ -2153,7 +2128,7 @@ index dd597ad3..d5e80f68 100644
 +                    root = printSettingsTitle.parentElement && printSettingsTitle.parentElement.parentElement;
 +                if (!root)
 +                    return false;
-+
+ 
 +                let target = Array.from(root.querySelectorAll("div")).find((el) => {
 +                    const text = (el.textContent || "").trim();
 +                    const rect = el.getBoundingClientRect();
@@ -2259,7 +2234,7 @@ index dd597ad3..d5e80f68 100644
 +    json device = current_creality_device_ref();
 +    std::string address = json_string_value(device, "address");
 +    if (!address.empty()) {
-+        std::thread([this, address]() {
++        std::thread([this, alive = m_alive, address]() {
 +            bool ok = false;
 +            bool on = false;
 +            json payload;
@@ -2288,9 +2263,9 @@ index dd597ad3..d5e80f68 100644
 +                })
 +                .perform_sync();
 +
-+            if (ok && m_browser) {
-+                m_browser->CallAfter([this, on]() {
-+                    if (!m_browser || !m_creality_device_page_active)
++            if (ok) {
++                wxGetApp().CallAfter([this, alive, on]() {
++                    if (!alive->load() || !m_browser || !m_creality_device_page_active)
 +                        return;
 +                    WebView::RunScript(m_browser, wxString::Format(
 +                        "(function(){var s=%s; if(window.__orcaLogoLightSetState) window.__orcaLogoLightSetState(s, 'Ready');"
@@ -2370,11 +2345,12 @@ index dd597ad3..d5e80f68 100644
 +            m_browser->Reload();
 +    } else if (command == "orca_set_logo_light") {
 +        bool on = message.value("value", 0) != 0;
-+        std::thread([this, on]() {
-+            bool ok = set_creality_logo_light(on);
-+            if (m_browser) {
-+                m_browser->CallAfter([this, ok, on]() {
-+                    if (!m_browser || !m_creality_device_page_active)
++        const std::string address = json_string_value(current_creality_device_ref(), "address");
++        std::thread([this, alive = m_alive, address, on]() {
++            bool ok = set_creality_logo_light(address, on);
++            {
++                wxGetApp().CallAfter([this, alive, ok, on]() {
++                    if (!alive->load() || !m_browser || !m_creality_device_page_active)
 +                        return;
 +                    WebView::RunScript(m_browser, wxString::Format(
 +                        "window.__orcaLogoLightSetState && window.__orcaLogoLightSetState(%s, '%s');",
@@ -2425,7 +2401,7 @@ index dd597ad3..d5e80f68 100644
 +        }
 +
 +        send_creality_command("update_download_progress", json(1));
-+        std::thread([this, downloads = std::move(downloads)]() {
++        std::thread([this, alive = m_alive, downloads = std::move(downloads)]() {
 +            std::string last_error;
 +            bool all_ok = true;
 +            for (size_t i = 0; i < downloads.size(); ++i) {
@@ -2438,18 +2414,22 @@ index dd597ad3..d5e80f68 100644
 +                    break;
 +                }
 +                int progress = static_cast<int>(((i + 1) * 100) / downloads.size());
-+                if (m_browser) {
-+                    m_browser->CallAfter([this, progress]() {
++                {
++                    wxGetApp().CallAfter([this, alive, progress]() {
++                        if (!alive->load())
++                            return;
 +                        send_creality_command("update_download_progress", json(progress));
 +                    });
 +                }
 +            }
 +
-+            if (m_browser) {
-+                m_browser->CallAfter([this, all_ok, last_error]() {
++            {
++                wxGetApp().CallAfter([this, alive, all_ok, last_error]() {
++                    if (!alive->load())
++                        return;
 +                    send_creality_command("update_download_progress", json(all_ok ? 100 : 0));
 +                    if (!all_ok)
-+                        wxMessageBox(wxString::FromUTF8(last_error), _L("Export failed"), wxOK | wxICON_ERROR, this);
++                        show_error(this, wxString::FromUTF8(last_error));
 +                });
 +            }
 +        }).detach();
@@ -2498,7 +2478,10 @@ index dd597ad3..d5e80f68 100644
 +            return;
 +        }
 +
-+        handle_creality_script_message(message);
++        wxGetApp().CallAfter([this, alive = m_alive, message]() {
++            if (alive->load())
++                handle_creality_script_message(message);
++        });
 +    } catch (const std::exception& e) {
 +        BOOST_LOG_TRIVIAL(warning) << "Creality device page script message failed: " << e.what();
 +    }
@@ -2517,7 +2500,10 @@ index dd597ad3..d5e80f68 100644
 +        wxString encoded = url.StartsWith(download_scheme) ? url.Mid(download_scheme.Length()) : url.Mid(logo_scheme.Length());
 +        std::string payload = wxGetApp().url_decode(encoded.ToUTF8().data());
 +        json message = json::parse(payload);
-+        handle_creality_script_message(message);
++        wxGetApp().CallAfter([this, alive = m_alive, message]() {
++            if (alive->load())
++                handle_creality_script_message(message);
++        });
 +    } catch (const std::exception& e) {
 +        BOOST_LOG_TRIVIAL(warning) << "Creality device page download navigation failed: " << e.what();
 +    }
@@ -2526,6 +2512,9 @@ index dd597ad3..d5e80f68 100644
 +void PrinterWebView::configure_page_scripts()
 +{
 +    m_browser->RemoveAllUserScripts();
++    // Clearing user scripts also clears wx's JS alias; the native handler survives.
++    m_browser->AddUserScript("if (window.chrome && window.chrome.webview) window.wx = window.chrome.webview;"
++                             "else if (window.webkit && window.webkit.messageHandlers) window.wx = window.webkit.messageHandlers.wx;");
 +    add_page_strings(m_browser);
  #ifdef __linux__
      inject_vue_resize_workaround(m_browser);
@@ -2555,17 +2544,17 @@ index dd597ad3..d5e80f68 100644
 +        )JS");
 +    }
 +}
- 
++
 +void PrinterWebView::create_browser()
 +{
 +    m_browser = WebView::CreateWebView(this, "");
 +    configure_page_scripts();
-+
+ 
 +#ifdef __linux__
      auto cookiesPath = boost::filesystem::path(data_dir() + "/cache/cookies.db");
      auto wv = static_cast<WebKitWebView*>(m_browser->GetNativeBackend());
      auto wv_ctx = webkit_web_view_get_context(wv);
-@@ -194,6 +1177,7 @@ void PrinterWebView::create_browser()
+@@ -194,6 +1191,7 @@ void PrinterWebView::create_browser()
      webkit_cookie_manager_set_persistent_storage(cookieManager, cookiesPath.c_str(), WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
  #endif
  
@@ -2573,7 +2562,7 @@ index dd597ad3..d5e80f68 100644
      m_browser->Bind(wxEVT_WEBVIEW_ERROR, &PrinterWebView::OnError, this);
      m_browser->Bind(wxEVT_WEBVIEW_LOADED, &PrinterWebView::OnLoaded, this);
      m_browser->Bind(wxEVT_WEBVIEW_NEWWINDOW, &PrinterWebView::OnNewWindow, this);
-@@ -224,28 +1208,38 @@ static PrintHostType active_host_type()
+@@ -224,28 +1222,38 @@ static PrintHostType active_host_type()
  
  void PrinterWebView::load_url(wxString& url, wxString apikey)
  {
@@ -2624,7 +2613,7 @@ index dd597ad3..d5e80f68 100644
      UpdateState();
  }
  
-@@ -255,43 +1249,153 @@ bool PrinterWebView::Show(bool show)
+@@ -255,43 +1263,153 @@ bool PrinterWebView::Show(bool show)
          reset_browser();
      if (show && !m_url_deferred.empty()) {
          m_browser->LoadURL(m_url_deferred);
@@ -2789,25 +2778,32 @@ index dd597ad3..d5e80f68 100644
      if (window.fetch) {
          const originalFetch = window.fetch;
          window.fetch = function(input, init = {}) {
-@@ -303,9 +1407,6 @@ void PrinterWebView::SendAPIKey()
+@@ -302,23 +1420,7 @@ void PrinterWebView::SendAPIKey()
+     }
  )",
                                         m_apikey);
-     m_browser->RemoveAllUserScripts();
+-    m_browser->RemoveAllUserScripts();
 -    
 -    // RemoveAllUserScripts causes WebView to forget about our script message handler, 
 -    // so re-add it here.
-     m_browser->RemoveScriptMessageHandler("wx");
-     // Mark before adding: on WKWebView the add yields in RunScript() after registering "wx",
-     // and CreateWebView()'s deferred add, if it runs in that yield, would register it again.
-@@ -314,7 +1415,6 @@ void PrinterWebView::SendAPIKey()
-         wxLogError("Could not add script message handler");
- 
- #ifdef __linux__
+-    m_browser->RemoveScriptMessageHandler("wx");
+-    // Mark before adding: on WKWebView the add yields in RunScript() after registering "wx",
+-    // and CreateWebView()'s deferred add, if it runs in that yield, would register it again.
+-    WebView::MarkScriptMessageHandlerAdded(m_browser);
+-    if (!m_browser->AddScriptMessageHandler("wx"))
+-        wxLogError("Could not add script message handler");
+-
+-#ifdef __linux__
 -    // Re-inject the vue-resize/WebKitGTK workaround that RemoveAllUserScripts just cleared.
-     inject_vue_resize_workaround(m_browser);
- #endif
-     add_page_strings(m_browser);
-@@ -327,64 +1427,47 @@ void PrinterWebView::OnError(wxWebViewEvent &evt)
+-    inject_vue_resize_workaround(m_browser);
+-#endif
+-    add_page_strings(m_browser);
+-
++    configure_page_scripts();
+     m_browser->AddUserScript(script);
+     m_browser->Reload();
+ }
+@@ -327,64 +1429,47 @@ void PrinterWebView::OnError(wxWebViewEvent &evt)
  {
      auto e = "unknown error";
      switch (evt.GetInt()) {
@@ -2903,16 +2899,17 @@ index dd597ad3..d5e80f68 100644
 +} // namespace GUI
 +} // namespace Slic3r
 diff --git a/src/slic3r/GUI/PrinterWebView.hpp b/src/slic3r/GUI/PrinterWebView.hpp
-index 01ee229b..6d478a8a 100644
+index 01ee229b..9a3e2fcc 100644
 --- a/src/slic3r/GUI/PrinterWebView.hpp
 +++ b/src/slic3r/GUI/PrinterWebView.hpp
-@@ -23,14 +23,18 @@
+@@ -23,14 +23,19 @@
  #include "wx/fs_arc.h"
  #include "wx/fs_mem.h"
  #include "wx/stdpaths.h"
 +#include <nlohmann/json.hpp>
 +#include <boost/optional.hpp>
 +#include <memory>
++#include <atomic>
 +#include <string>
  #include <wx/panel.h>
 -#include <wx/tbarbase.h>
@@ -2927,7 +2924,7 @@ index 01ee229b..6d478a8a 100644
  
  namespace Slic3r {
  namespace GUI {
-@@ -49,7 +53,10 @@ public:
+@@ -49,7 +54,10 @@ public:
      void OnError(wxWebViewEvent& evt);
      void OnLoaded(wxWebViewEvent& evt);
      void OnNewWindow(wxWebViewEvent& evt);
@@ -2938,7 +2935,7 @@ index 01ee229b..6d478a8a 100644
      void reload();
      void update_mode();
  
-@@ -61,25 +68,45 @@ private:
+@@ -61,25 +69,46 @@ private:
      void SendAPIKey();
      void create_browser();
      void reset_browser();
@@ -2965,10 +2962,11 @@ index 01ee229b..6d478a8a 100644
 +    void send_creality_initial_state();
 +    void inject_creality_logo_light_control();
 +    boost::optional<bool> query_creality_logo_light_state() const;
-+    bool set_creality_logo_light(bool on) const;
++    static bool set_creality_logo_light(const std::string& address, bool on);
 +    void handle_creality_script_message(const nlohmann::json& message);
 +
 +    wxWebView* m_browser { nullptr };
++    std::shared_ptr<std::atomic<bool>> m_alive{std::make_shared<std::atomic<bool>>(true)};
 +    long m_zoomFactor { 100 };
 +    wxString m_apikey;
 +    bool m_apikey_sent { false };
