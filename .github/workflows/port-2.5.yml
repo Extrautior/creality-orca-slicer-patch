@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: orca-25-beta-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -35,6 +36,18 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+      - name: Retrieve previous dependency failure diagnostics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          Invoke-WebRequest 'https://api.github.com/repos/Extrautior/creality-orca-slicer-patch/actions/jobs/123683437387/logs' -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json' } -OutFile build/previous-job.log
+          Select-String -Path build/previous-job.log -Pattern 'error C\d+|error MSB\d+|CMake Error|fatal error|error LNK\d+|failed with' | Select-Object -Last 40 | ForEach-Object { $_.Line.Substring(0, [Math]::Min(800, $_.Line.Length)) }
+          Get-Content build/previous-job.log -Tail 80 | ForEach-Object { $_.Substring(0, [Math]::Min(800, $_.Length)) }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: previous-dependency-log
+          path: build/previous-job.log
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
