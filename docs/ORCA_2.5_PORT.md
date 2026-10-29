@@ -57,6 +57,9 @@ Preparation verifies the source commit, patch application and all inherited web
 asset hashes. Web assets come from the existing pinned release archive; none of
 its core binaries or old machine profiles are copied.
 
+The patch disables the shallow wxWidgets clone because the beta pins a commit
+that is no longer a branch tip. It retains the exact pinned wxWidgets revision.
+
 Packaging verifies the official 2.5 portable archive's SHA-256, derives the exact
 clean executable/DLL hashes, includes freshly built native DLLs, generates the
 payload manifest, builds the installer, and tests a disposable installation.
