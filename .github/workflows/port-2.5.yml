@@ -1,0 +1,117 @@
+name: Orca 2.5 Windows compatibility
+on:
+  pull_request:
+    paths: ['patches/creality-orca-2.5.0-beta.patch', 'scripts/**', 'installer/**', 'tests/**', 'config/**', '.github/workflows/port-2.5.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: orca-25-beta-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: OrcaSlicer/OrcaSlicer
+          ref: 345efec64c7b95a05ce5cf96df0dde66a158835c
+          path: orca
+      - name: Apply exact source patch
+        run: |
+          git -C orca apply --check ../patches/creality-orca-2.5.0-beta.patch
+          git -C orca apply ../patches/creality-orca-2.5.0-beta.patch
+      - name: Test actual CFS parser and baked multiplier export
+        run: python3 tests/test_native_protocol.py --source orca
+      - name: Test recreated webview JSON bridge
+        run: node tests/test_webview_bridge.mjs orca
+  windows:
+    needs: protocol
+    runs-on: windows-2022
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test installer engine with disposable fixtures
+        run: ./tests/test-installer-fixture.ps1
+      - uses: actions/checkout@v4
+        with:
+          repository: OrcaSlicer/OrcaSlicer
+          ref: 345efec64c7b95a05ce5cf96df0dde66a158835c
+          path: orca
+      - name: Prepare pinned source and verified web resources
+        run: ./scripts/prepare-2.5.ps1 -OrcaSource orca -WorkDirectory build/downloads
+      - name: Set up native Perl
+        run: |
+          if (!(Test-Path C:/Strawberry/perl/bin/perl.exe)) { choco install strawberryperl --no-progress -y }
+          'C:/Strawberry/perl/bin' >> $env:GITHUB_PATH
+      - name: Cache exact upstream dependencies
+        id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: orca/deps/build/OrcaSlicer_dep
+          key: orca-25-345efec-win2022-msvc-deps-v1
+      - name: Resume an incomplete dependency build
+        if: steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: orca/deps/build
+          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: orca-25-345efec-win2022-msvc-state-
+      - name: Build dependencies
+        if: steps.deps.outputs.cache-hit != 'true'
+        working-directory: orca
+        run: |
+          ./build_win.bat -d --arch x64 --msvc --msbuild --vs 2022 -j 3 *> dependencies.log
+          $buildExit = $LASTEXITCODE
+          Select-String -Path dependencies.log -Pattern 'error C\d+|error MSB\d+|CMake Error|fatal error|error LNK\d+' | Select-Object -First 40 | ForEach-Object Line
+          Get-Content dependencies.log -Tail 60
+          if ($buildExit -ne 0) { throw 'Dependency build failed; see dependencies.log.' }
+      - name: Preserve dependency build state after a failure
+        if: failure() && steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: orca/deps/build
+          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Save compiled dependencies before compiling the port
+        if: steps.deps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: orca/deps/build/OrcaSlicer_dep
+          key: orca-25-345efec-win2022-msvc-deps-v1
+      - name: Build patched OrcaSlicer
+        working-directory: orca
+        run: |
+          ./build_win.bat -s -i --arch x64 --msvc --msbuild --vs 2022 -j 3 *> slicer.log
+          $buildExit = $LASTEXITCODE
+          Select-String -Path slicer.log -Pattern 'error C\d+|error MSB\d+|CMake Error|fatal error|error LNK\d+' | Select-Object -First 40 | ForEach-Object Line
+          Get-Content slicer.log -Tail 60
+          if ($buildExit -ne 0) { throw 'OrcaSlicer build failed; see slicer.log.' }
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Package and verify installer
+        run: ./scripts/package-2.5.ps1 -BuiltDirectory orca/build/OrcaSlicer -WorkDirectory build/package -OutputDirectory release/2.5.0-beta
+      - name: Upload tested build and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: creality-orca-2.5.0-beta-windows-x64
+          path: release/2.5.0-beta/
+          if-no-files-found: error
+      - name: Save build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-diagnostics
+          path: |
+            orca/dependencies.log
+            orca/slicer.log
+            orca/build/CMakeFiles/CMakeConfigureLog.yaml
+            orca/deps/build/**/CMakeFiles/CMakeConfigureLog.yaml
+            orca/deps/build/**/src/*-stamp/*-*.log

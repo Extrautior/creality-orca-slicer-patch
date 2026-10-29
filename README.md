@@ -4,6 +4,16 @@ This repository packages an unofficial Windows compatibility patch that adds the
 
 ## Current Release
 
+The published installer below is for **2.4.2 stable**. The **2.5.0-beta source port**
+is in [PR #1](https://github.com/Extrautior/creality-orca-slicer-patch/pull/1).
+It targets official commit `345efec64c7b95a05ce5cf96df0dde66a158835c`.
+Orca 2.5 is currently a prerelease; it is a separate target, not an update accepted by the 2.4.2 installer.
+
+The 2.5 port retains the device page and CFS controls while adapting lazy webview recreation,
+filament-list refresh, Creality discovery, timelapse Off, and Default/Fast flush-multiplier export.
+See [the 2.5 build guide](docs/ORCA_2.5_PORT.md) for build status, packaging, and the remaining runtime checks.
+Do not install the old binaries into 2.5 or interpret patch application as proof of runtime compatibility.
+
 - Target: OrcaSlicer `2.4.2` Windows x64
 - Exact upstream commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
 - Patch revision: `creality-cfs-orca-2.4.2-r1-20260709`
@@ -58,6 +68,7 @@ Run the same installer and select **Restore Backup** to undo the patch.
 ## Repository Layout
 
 - `patches/creality-orca-2.4.2.patch` - current source patch.
+- `patches/creality-orca-2.5.0-beta.patch` - 2.5 beta source port, pending native build/runtime verification.
 - `patches/creality-orca-2.4.0-beta.patch` - previous 2.4 beta patch.
 - `patches/creality-orca-2.3.2.patch` - previous stable patch.
 - `installer/` - .NET 8 WinForms installer and transactional patch engine.

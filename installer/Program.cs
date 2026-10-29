@@ -1,10 +1,15 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
 
 internal static class Program
 {
+    internal static string TargetVersion => Metadata("PatchTargetVersion");
+    internal static string TargetCommit => Metadata("PatchTargetCommit");
+    private static string Metadata(string key) => Assembly.GetExecutingAssembly()
+        .GetCustomAttributes<AssemblyMetadataAttribute>().Single(item => item.Key == key).Value!;
     [STAThread]
     private static int Main(string[] args)
     {
@@ -113,7 +118,7 @@ internal sealed class InstallerForm : Form
 
     public InstallerForm()
     {
-        Text = "Creality OrcaSlicer 2.4.2 Patch";
+        Text = $"Creality OrcaSlicer {Program.TargetVersion} Patch";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(780, 550);
         Size = new Size(860, 610);
@@ -122,7 +127,7 @@ internal sealed class InstallerForm : Form
 
         var title = new Label
         {
-            Text = "Creality Hi / CFS patch for OrcaSlicer 2.4.2",
+            Text = $"Creality Hi / CFS patch for OrcaSlicer {Program.TargetVersion}",
             Font = new Font("Segoe UI Semibold", 18F),
             AutoSize = true,
             Location = new Point(24, 20)
@@ -136,7 +141,7 @@ internal sealed class InstallerForm : Form
         };
         var versionNote = new Label
         {
-            Text = "Supported build: OrcaSlicer 2.4.2, commit 8500fcdc only.",
+            Text = $"Supported build: OrcaSlicer {Program.TargetVersion}, commit {Program.TargetCommit[..8]} only.",
             AutoSize = true,
             ForeColor = Color.FromArgb(140, 60, 20),
             Location = new Point(27, 86)
