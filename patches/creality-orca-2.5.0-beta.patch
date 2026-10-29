@@ -24,6 +24,18 @@ index 00000000..64c84a53
 +must never be used as the 2.5 payload.
 +
 +Also preserves beta async WebSocket deadlines, command batching, layer-change placeholders and no-reload tab selection.
+diff --git a/resources/profiles/Creality.json b/resources/profiles/Creality.json
+index e2fbd27d..e7ddd66e 100644
+--- a/resources/profiles/Creality.json
++++ b/resources/profiles/Creality.json
+@@ -1,6 +1,6 @@
+ {
+ 	"name": "Creality",
+-	"version": "02.03.02.87",
++	"version": "02.03.02.88",
+ 	"force_update": "0",
+ 	"description": "Creality configurations",
+ 	"machine_model_list": [
 diff --git a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json
 index 613089a7..cb92a0fe 100644
 --- a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json	

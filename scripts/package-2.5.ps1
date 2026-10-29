@@ -23,6 +23,7 @@ $payload = Join-Path $work 'payload'
 $root = Join-Path $payload 'root'
 New-Item -ItemType Directory -Force $root | Out-Null
 $paths = @('orca-slicer.exe', 'OrcaSlicer.dll',
+    'resources/profiles/Creality.json',
     'resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json',
     'resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json',
     'resources/profiles/Creality/machineList.json')
