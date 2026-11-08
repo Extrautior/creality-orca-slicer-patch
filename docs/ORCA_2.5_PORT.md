@@ -108,13 +108,18 @@ Locally verified during this port:
   Edge/WebKit reloads without duplicate command delivery.
 - Replacing the patched export block with upstream's block makes the compiled
   regression fail specifically on the required multiplier of 1.
-- Installer compiles with 2.5 branding against a synthetic test payload.
+- Full Windows x64 dependencies and patched application compiled locally with
+  Visual Studio 2022, MSVC and Ninja against official 2.5.0 stable.
+- Real slicing/export tests pass at multipliers 0, 0.35, 0.7, 1, 1.3 and 2:
+  exported multiplier is always 1, volumes are scaled once, and project values
+  are preserved.
 - Fixture tests pass for dry run, stale markers, install, every payload hash,
   idempotence, resource tampering, modified-core rollback protection, complete
   byte-for-byte rollback (including newly added files), and unsupported cores.
 
-The synthetic fixture is not an Orca binary build. Native build status is tracked
-on [PR #1](https://github.com/Extrautior/creality-orca-slicer-patch/pull/1).
+The locally built Windows installer includes the rebuilt native modules and all
+11 public presets. Device-page rendering and physical printing still require
+owner testing on a Hi/CFS; compilation and CLI tests do not establish those results.
 
 Focused tests (the C++ test uses a local GCC-compatible compiler):
 

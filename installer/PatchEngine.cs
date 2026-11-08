@@ -459,7 +459,7 @@ internal static class PatchEngine
 
     private static void StopOrcaIfNeeded(string installDir, bool forceClose, Action<string> log)
     {
-        var running = Process.GetProcesses()
+        var running = Process.GetProcessesByName("orca-slicer")
             .Where(process =>
             {
                 try

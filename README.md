@@ -4,7 +4,8 @@ This repository packages an unofficial Windows compatibility patch that adds the
 
 ## Current Release
 
-The published installer below is for **2.4.2 stable**. The **2.5.0 source port**
+The published installer below is for **2.4.2 stable**. The locally built and
+tested **2.5.0 Windows installer** accompanies the **2.5.0 source port**, which
 is in [PR #1](https://github.com/Extrautior/creality-orca-slicer-patch/pull/1).
 It targets official commit `40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19`.
 The new target is **OrcaSlicer 2.5.0 stable** (November 7, 2026).
@@ -12,7 +13,9 @@ The 2.4.2 installer only accepts its original version.
 
 The 2.5 port retains the device page and CFS controls while adapting lazy webview recreation,
 filament-list refresh, Creality discovery, timelapse Off, and Default/Fast flush-multiplier export.
-See [the 2.5 build guide](docs/ORCA_2.5_PORT.md) for build status, packaging, and the remaining runtime checks.
+The full native Windows build and real G-code exports passed locally. Exported
+Creality Hi flush multipliers stay at 1, with the chosen factor baked into volumes.
+See [the 2.5 build guide](docs/ORCA_2.5_PORT.md) for packaging and the remaining hardware checks.
 The 2.5 package includes **Creality Hi 0.4 nozzle - Extrautior**, four print presets
 (0.08/0.12/0.20/0.28 mm) and six tuned filament presets. Connection addresses,
 credentials and personal preset metadata are excluded.

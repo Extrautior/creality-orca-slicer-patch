@@ -28,10 +28,11 @@ $paths = @('orca-slicer.exe', 'OrcaSlicer.dll',
     'resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json',
     'resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json',
     'resources/profiles/Creality/machineList.json')
-# Include the native runtime DLLs from the same build as OrcaSlicer.dll.
+# Include native modules and helpers from the same build, including the Python bridge.
 $paths += Get-ChildItem (Join-Path $built 'resources/profiles/Creality') -Filter 'Extrautior *.json' -File -Recurse |
     ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
-$paths += Get-ChildItem $built -Filter '*.dll' -File | ForEach-Object Name
+$paths += Get-ChildItem $built -File -Recurse | Where-Object Extension -In @('.dll','.pyd','.exe') |
+    ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
 $paths += Get-ChildItem (Join-Path $built 'resources/web/deviceMgr') -File -Recurse |
     ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
 $paths = @($paths | Sort-Object -Unique)
