@@ -69,13 +69,31 @@ properties still build a 2.4.2 installer for existing payloads.
 The Windows workflow uploads a build artifact only after packaging tests pass.
 It does not publish a GitHub release or claim printer hardware validation.
 
+## Bundled public presets
+
+Select **Creality Hi 0.4 nozzle - Extrautior** for the owner's saved printer tuning.
+The bundle includes 0.08, 0.12, 0.20 and 0.28 mm print presets and six filament presets:
+Duramic PLA, Inslogic PLA PRO, Inslogic WoodFill PLA, Sunlu HS PLA+ 2.0,
+Generic PETG and Yasin ABS. Defaults select the custom 0.20 mm process and Sunlu.
+The ABS preset declares ABS as its material type; the saved calibration values remain.
+The printer's single junction-deviation limit is repeated for normal and silent modes.
+
+Addresses, URLs, credentials, account identifiers and personal preset metadata are
+excluded. System preset IDs are generated with Orca's profile tool. The printer uses
+the Creality Print host type with no saved address.
+
+The saved **No sparse layers** option is preserved. Orca's generic validation cube
+does not satisfy its tower-clearance rule: 1,329 of 1,330 slicing cases passed and
+this layout-dependent case failed. Position the tower/model appropriately when
+using that option. Preset loading and full-tree schema/identity checks pass.
+
 ## Validation status
 
 Locally verified during this port:
 
 - Exact source patch applies to a fresh official 2.5 stable checkout.
-- Static profile checks pass across all 71 vendors, with no errors or warnings;
-  the patched Creality bundle version advances from 02.03.02.87 to 02.03.02.88.
+- Static profile checks pass across all 72 vendors, with no errors or warnings;
+  the patched Creality bundle version advances from 02.03.02.88 to 02.03.02.89.
 - Every inherited web asset matches the pinned 2.4.2 manifest.
 - A read-only live F018 response was parsed into four loaded CFS slots and an
   external spool entry. No printer settings or motion commands were changed.
@@ -106,7 +124,7 @@ node tests/test_webview_bridge.mjs orca
 ./tests/test-installer-fixture.ps1
 ```
 
-Before publishing an installer, verify with a separate Orca `--datadir` and a real Hi/CFS:
+Printer hardware checks for the owner, using a separate Orca `--datadir` and a real Hi/CFS:
 
 1. Launch, select the Hi profile and Creality Print host, and open Device. Resize,
    switch tabs/printers, reload, and check both themes.
