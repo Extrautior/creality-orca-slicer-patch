@@ -3,7 +3,12 @@
 Target: Windows x64 official **v2.5.0**, commit
 `40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19`.
 This stable release was published November 7, 2026.
-The installer accepts the exact Windows x64 stable core hashes.
+The installer accepts the exact Windows x64 stable core hashes from both the
+portable ZIP and the installed release. These releases carry different signature
+bytes: the installed executable/DLL have valid ORCASLICER PTE. LTD. signatures
+and match the verified portable program bytes exactly after excluding only the
+PE checksum, security-directory entry and certificate table. Both complete core
+hash pairs are pinned; arbitrary changes and mixed pairs remain rejected.
 
 ## Compatibility changes
 

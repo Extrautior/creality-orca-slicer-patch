@@ -42,6 +42,7 @@ $manifest = [ordered]@{
     TargetVersion = $config.Version
     TargetCommit = $config.Commit
     ExpectedCleanCore = [ordered]@{}
+    AdditionalCleanCores = @($config.AdditionalCleanCores)
     Files = @()
 }
 foreach ($core in @('orca-slicer.exe', 'OrcaSlicer.dll')) {

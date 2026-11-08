@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory)][string]$CleanDirectory,
     [Parameter(Mandatory)][string]$ManifestPath,
     [Parameter(Mandatory)][string]$WorkDirectory,
+    [string]$CleanCoreDirectory,
     [switch]$SmokeTest
 )
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,11 @@ New-Item -ItemType Directory $WorkDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
 $target = Join-Path $work 'OrcaSlicer'
 Copy-Item -LiteralPath (Resolve-Path $CleanDirectory).Path -Destination $target -Recurse
+if ($CleanCoreDirectory) {
+    foreach ($core in @('orca-slicer.exe', 'OrcaSlicer.dll')) {
+        Copy-Item -LiteralPath (Join-Path $CleanCoreDirectory $core) -Destination (Join-Path $target $core) -Force
+    }
+}
 $data = Join-Path $work 'backups'
 function Run-Patcher([string[]]$Operation, [int]$Expected = 0) {
     $testLog = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.log')

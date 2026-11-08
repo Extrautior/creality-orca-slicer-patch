@@ -11,6 +11,7 @@ internal sealed class PayloadManifest
     public string TargetVersion { get; set; } = "";
     public string TargetCommit { get; set; } = "";
     public Dictionary<string, string> ExpectedCleanCore { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<Dictionary<string, string>> AdditionalCleanCores { get; set; } = [];
     public List<PayloadFile> Files { get; set; } = [];
 }
 
@@ -331,9 +332,10 @@ internal static class PatchEngine
             .Where(file => coreNames.Contains(Path.GetFileName(file.RelativePath), StringComparer.OrdinalIgnoreCase))
             .ToDictionary(file => Path.GetFileName(file.RelativePath), file => file.Sha256, StringComparer.OrdinalIgnoreCase);
 
-        clean = coreNames.All(name =>
-            manifest.ExpectedCleanCore.TryGetValue(name, out var expected) &&
-            actual[name].Equals(expected, StringComparison.OrdinalIgnoreCase));
+        clean = manifest.AdditionalCleanCores.Prepend(manifest.ExpectedCleanCore)
+            .Any(build => coreNames.All(name =>
+                build.TryGetValue(name, out var expected) &&
+                actual[name].Equals(expected, StringComparison.OrdinalIgnoreCase)));
         patched = coreNames.All(name =>
             patchedHashes.TryGetValue(name, out var expected) &&
             actual[name].Equals(expected, StringComparison.OrdinalIgnoreCase));
