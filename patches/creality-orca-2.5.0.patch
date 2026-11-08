@@ -38,14 +38,14 @@ index 7f861c67..5573f69e 100644
      DEPENDS ${PNG_PKG} ${ZLIB_PKG} ${EXPAT_PKG} ${JPEG_PKG}
      CMAKE_ARGS
 diff --git a/resources/profiles/Creality.json b/resources/profiles/Creality.json
-index e7ddd66e..2d71aa65 100644
+index e7ddd66e..f0d79a45 100644
 --- a/resources/profiles/Creality.json
 +++ b/resources/profiles/Creality.json
 @@ -1,6 +1,6 @@
  {
  	"name": "Creality",
 -	"version": "02.03.02.88",
-+	"version": "02.03.02.89",
++	"version": "02.03.02.90",
  	"force_update": "0",
  	"description": "Creality configurations",
  	"machine_model_list": [

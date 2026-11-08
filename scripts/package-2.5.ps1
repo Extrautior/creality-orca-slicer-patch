@@ -28,8 +28,9 @@ $paths = @('orca-slicer.exe', 'OrcaSlicer.dll',
     'resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json',
     'resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json',
     'resources/profiles/Creality/machineList.json')
-# Include native modules and helpers from the same build, including the Python bridge.
-$paths += Get-ChildItem (Join-Path $built 'resources/profiles/Creality') -Filter 'Extrautior *.json' -File -Recurse |
+# A plaintext vendor index takes precedence over the official .opc vendor cache.
+# Include the COMPLETE vendor tree so every indexed preset and parent is present.
+$paths += Get-ChildItem (Join-Path $built 'resources/profiles/Creality') -File -Recurse |
     ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
 $paths += Get-ChildItem $built -File -Recurse | Where-Object Extension -In @('.dll','.pyd','.exe') |
     ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
@@ -63,6 +64,8 @@ foreach ($path in $paths) {
     }
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $payload 'manifest.json') -Encoding utf8NoBOM
+python (Join-Path $repo 'tests/test_payload_profiles.py') --payload $payload
+if ($LASTEXITCODE -ne 0) { throw 'Packaged vendor profiles are incomplete.' }
 & (Join-Path $PSScriptRoot 'rebuild-installer.ps1') -PayloadDirectory $payload -OutputDirectory $output
 $installer = Join-Path $output "Creality-OrcaSlicer-$($config.Version)-Patch-Installer.exe"
 if (!(Test-Path $installer)) { throw 'Installer was not generated.' }

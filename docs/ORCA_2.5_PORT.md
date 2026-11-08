@@ -12,6 +12,12 @@ hash pairs are pinned; arbitrary changes and mixed pairs remain rejected.
 
 ## Compatibility changes
 
+- Package the complete Creality vendor tree with the plaintext index. Official
+  2.5 installers ship `.opc` caches; a partial plaintext override hides that cache
+  and prevents Creality and dependent user presets from loading. Bundle version
+  02.03.02.90 refreshes the earlier incomplete cache. Packaging verifies all
+  1,379 index-referenced JSON files before building the installer.
+
 - Keep 2.5's `LazyInstance<PrinterWebView>`, browser recreation, script-handler
   tracking and translated missing-connection page. Reinstall the JSON bridge on
   recreation and bind the download navigation handler on each new browser.
