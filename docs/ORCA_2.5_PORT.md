@@ -44,7 +44,7 @@ git clone --branch v2.5.0 --depth 1 https://github.com/OrcaSlicer/OrcaSlicer.git
 ./scripts/prepare-2.5.ps1 -OrcaSource orca -WorkDirectory build/downloads
 Push-Location orca
 ./build_win.bat -d --arch x64 --msvc --msbuild --vs 2022 -j 3
-./build_win.bat -s -i --arch x64 --msvc --msbuild --vs 2022 -j 3
+./build_win.bat -s -i --arch x64 --msvc --ninja -j 4
 Pop-Location
 ./scripts/package-2.5.ps1 -BuiltDirectory orca/build/OrcaSlicer -WorkDirectory build/package
 ```

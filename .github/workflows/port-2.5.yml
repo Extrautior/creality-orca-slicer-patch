@@ -97,7 +97,7 @@ jobs:
       - name: Build patched OrcaSlicer
         working-directory: orca
         run: |
-          ./build_win.bat -s -i --arch x64 --msvc --msbuild --vs 2022 -j 3 *> slicer.log
+          ./build_win.bat -s -i --arch x64 --msvc --ninja -j 4 *> slicer.log
           $buildExit = $LASTEXITCODE
           Select-String -Path slicer.log -Pattern 'error C\d+|error MSB\d+|CMake Error|fatal error|error LNK\d+' | Select-Object -First 40 | ForEach-Object Line
           Get-Content slicer.log -Tail 60
