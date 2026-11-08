@@ -13,11 +13,13 @@ internal sealed class PayloadManifest
     public Dictionary<string, string> ExpectedCleanCore { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<Dictionary<string, string>> AdditionalCleanCores { get; set; } = [];
     public List<PayloadFile> Files { get; set; } = [];
+    public bool IncludeProfiles { get; set; } = true;
 }
 
 internal sealed class PayloadFile
 {
     public string RelativePath { get; set; } = "";
+    public string? SourceRelativePath { get; set; }
     public long Size { get; set; }
     public string Sha256 { get; set; } = "";
 }
@@ -46,6 +48,7 @@ internal sealed class PatchMarker
     public string InstallDir { get; set; } = "";
     public string BackupDir { get; set; } = "";
     public DateTimeOffset InstalledAt { get; set; }
+    public bool? IncludeProfiles { get; set; }
 }
 
 internal sealed class PayloadBundle : IDisposable
@@ -58,6 +61,8 @@ internal sealed class PayloadBundle : IDisposable
     public string TempRoot { get; }
     public string PayloadRoot { get; }
     public PayloadManifest Manifest { get; }
+    public List<PayloadManifest> KnownManifests { get; } = [];
+    public string SourceFile(PayloadFile file) => PatchEngine.SafeCombine(PayloadRoot, file.SourceRelativePath ?? file.RelativePath);
 
     private PayloadBundle(string tempRoot, string payloadRoot, PayloadManifest manifest)
     {
@@ -66,7 +71,7 @@ internal sealed class PayloadBundle : IDisposable
         Manifest = manifest;
     }
 
-    public static PayloadBundle Open(Action<string> log)
+    public static PayloadBundle Open(Action<string> log, bool includeProfiles = false, string? installDir = null)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = assembly.GetManifestResourceNames()
@@ -86,6 +91,19 @@ internal sealed class PayloadBundle : IDisposable
         var payloadDir = Path.Combine(tempRoot, "payload");
         var payloadRoot = Path.Combine(payloadDir, "root");
         var manifestPath = Path.Combine(payloadDir, "manifest.json");
+        // Leaving the box unchecked never removes profiles from an existing patch.
+        if (installDir is not null) {
+            var markerPath = Path.Combine(installDir, ".creality-orca-patch", "current.json");
+            if (File.Exists(markerPath)) {
+                var marker = JsonSerializer.Deserialize<PatchMarker>(File.ReadAllText(markerPath), JsonOptions);
+                if (marker?.TargetVersion == "2.5.0" && (marker.IncludeProfiles ?? true)) {
+                    includeProfiles = true;
+                    log("Keeping previously installed Extrautior profiles.");
+                }
+            }
+        }
+        var noProfiles = Path.Combine(payloadDir, "manifest-no-profiles.json");
+        if (!includeProfiles && File.Exists(noProfiles)) manifestPath = noProfiles;
         if (!Directory.Exists(payloadRoot) || !File.Exists(manifestPath))
             throw new InvalidDataException("The embedded payload has an invalid layout.");
 
@@ -97,7 +115,7 @@ internal sealed class PayloadBundle : IDisposable
         log($"Verifying {manifest.Files.Count} embedded payload files...");
         foreach (var file in manifest.Files)
         {
-            var path = PatchEngine.SafeCombine(payloadRoot, file.RelativePath);
+            var path = PatchEngine.SafeCombine(payloadRoot, file.SourceRelativePath ?? file.RelativePath);
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Payload file is missing: {file.RelativePath}");
             var info = new FileInfo(path);
@@ -105,7 +123,14 @@ internal sealed class PayloadBundle : IDisposable
                 throw new InvalidDataException($"Payload verification failed: {file.RelativePath}");
         }
 
-        return new PayloadBundle(tempRoot, payloadRoot, manifest);
+        var bundle = new PayloadBundle(tempRoot, payloadRoot, manifest);
+        foreach (var path in Directory.GetFiles(payloadDir, "manifest*.json")) {
+            if (path == manifestPath) continue;
+            var known = JsonSerializer.Deserialize<PayloadManifest>(File.ReadAllText(path), JsonOptions);
+            if (known is not null) bundle.KnownManifests.Add(known);
+        }
+        log(manifest.IncludeProfiles ? "Extrautior profiles: included (existing user profiles are untouched)." : "Extrautior profiles: skipped.");
+        return bundle;
     }
 
     public void Dispose()
@@ -166,9 +191,16 @@ internal static class PatchEngine
 
         if (patched)
         {
-            VerifyInstalledPayload(bundle, installDir);
-            log("This exact patch is already installed and verified.");
-            return "The patch is already installed and all payload files are valid.";
+            try {
+                VerifyInstalledPayload(bundle, installDir);
+                log("This exact patch is already installed and verified.");
+                return "The patch is already installed and all payload files are valid.";
+            } catch (InvalidDataException) {
+                // Only exact known payloads may be upgraded or have presets added.
+                if (!bundle.KnownManifests.Any(known => InstalledFilesMatch(known.Files, installDir))) throw;
+                clean = true;
+                log("Verified an earlier patch/profile selection; creating a separate rollback backup before updating.");
+            }
         }
 
         if (!clean)
@@ -230,7 +262,7 @@ internal static class PatchEngine
             log("Installing verified payload...");
             foreach (var payloadFile in bundle.Manifest.Files)
             {
-                var source = SafeCombine(bundle.PayloadRoot, payloadFile.RelativePath);
+                var source = bundle.SourceFile(payloadFile);
                 var target = SafeCombine(installDir, payloadFile.RelativePath);
                 CopyAtomically(source, target, payloadFile.Sha256);
             }
@@ -243,6 +275,7 @@ internal static class PatchEngine
                 InstallDir = installDir,
                 BackupDir = backupDir,
                 InstalledAt = DateTimeOffset.Now
+                , IncludeProfiles = bundle.Manifest.IncludeProfiles
             };
             WriteJson(markerPath, marker);
             log("Post-install hash verification passed.");
@@ -362,6 +395,12 @@ internal static class PatchEngine
                 throw new InvalidDataException($"Installed payload verification failed: {payloadFile.RelativePath}");
         }
     }
+
+    private static bool InstalledFilesMatch(IEnumerable<PayloadFile> files, string installDir) => files.All(file => {
+        var target = SafeCombine(installDir, file.RelativePath);
+        return File.Exists(target) && new FileInfo(target).Length == file.Size &&
+               HashFile(target).Equals(file.Sha256, StringComparison.OrdinalIgnoreCase);
+    });
 
     private static void RestoreEntries(
         BackupManifest backup,

@@ -64,12 +64,17 @@ foreach ($path in $paths) {
     }
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $payload 'manifest.json') -Encoding utf8NoBOM
+Copy-Item (Join-Path $repo 'config/legacy-manifest-2.5-r3.json') (Join-Path $payload 'manifest-legacy-r3.json')
+python (Join-Path $repo 'scripts/prepare-optional-profiles.py') --payload $payload
+if ($LASTEXITCODE -ne 0) { throw 'Optional profile variant preparation failed.' }
 python (Join-Path $repo 'tests/test_payload_profiles.py') --payload $payload
 if ($LASTEXITCODE -ne 0) { throw 'Packaged vendor profiles are incomplete.' }
 & (Join-Path $PSScriptRoot 'rebuild-installer.ps1') -PayloadDirectory $payload -OutputDirectory $output
 $installer = Join-Path $output "Creality-OrcaSlicer-$($config.Version)-Patch-Installer.exe"
 if (!(Test-Path $installer)) { throw 'Installer was not generated.' }
-& (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest.json') -WorkDirectory (Join-Path $work 'test') -SmokeTest
+& (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest-no-profiles.json') -WorkDirectory (Join-Path $work 'test-base') -SmokeTest
+& (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest.json') -WorkDirectory (Join-Path $work 'test-profiles') -IncludeProfiles
+& (Join-Path $repo 'tests/test_optional_profiles.ps1') -Installer $installer -CleanDirectory $clean -WorkDirectory (Join-Path $work 'test-options')
 Copy-Item (Join-Path $payload 'manifest.json') (Join-Path $output 'payload-manifest.json')
 Copy-Item (Join-Path $repo 'patches/creality-orca-2.5.0.patch') $output
 Get-ChildItem $output -File | Where-Object Name -ne 'SHA256SUMS.txt' |

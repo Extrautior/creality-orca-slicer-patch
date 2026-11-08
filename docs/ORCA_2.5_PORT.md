@@ -12,6 +12,13 @@ hash pairs are pinned; arbitrary changes and mixed pairs remain rejected.
 
 ## Compatibility changes
 
+- Revision 4 makes the 11 Extrautior presets an unchecked installer option.
+  Both choices keep the core device/CFS/flushing fixes and complete stock vendor
+  tree. Patch-only index version is 02.03.02.91; opt-in version is 02.03.02.92.
+  Previously installed public presets are retained, user presets are untouched,
+  and exact known older payloads can be upgraded with a separate rollback backup.
+  CLI opt-in is `--include-profiles`; verify/restore honor the saved selection.
+
 - Package the complete Creality vendor tree with the plaintext index. Official
   2.5 installers ship `.opc` caches; a partial plaintext override hides that cache
   and prevents Creality and dependent user presets from loading. Bundle version

@@ -37,7 +37,7 @@ internal static class Program
             if (NeedsElevation(installDir) && !options.NoElevate)
                 return RelaunchElevated(options);
 
-            using var bundle = PayloadBundle.Open(Log);
+            using var bundle = PayloadBundle.Open(Log, options.IncludeProfiles, installDir);
             var dataRoot = options.DataRoot ?? PatchEngine.DefaultDataRoot;
             var result = options.Operation switch
             {
@@ -115,6 +115,7 @@ internal sealed class InstallerForm : Form
     private readonly Button browseButton = new();
     private readonly ProgressBar progress = new();
     private readonly CheckBox forceCloseBox = new();
+    private readonly CheckBox profilesBox = new();
 
     public InstallerForm()
     {
@@ -169,13 +170,18 @@ internal sealed class InstallerForm : Form
         forceCloseBox.AutoSize = true;
         forceCloseBox.Checked = true;
 
-        progress.Location = new Point(30, 218);
+        profilesBox.Text = "Install Extrautior Hi printer, filament and print presets (optional)";
+        profilesBox.Location = new Point(30, 210);
+        profilesBox.AutoSize = true;
+        profilesBox.Checked = false;
+
+        progress.Location = new Point(30, 242);
         progress.Width = 782;
         progress.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         progress.Style = ProgressBarStyle.Continuous;
 
-        logBox.Location = new Point(30, 250);
-        logBox.Size = new Size(782, 250);
+        logBox.Location = new Point(30, 274);
+        logBox.Size = new Size(782, 226);
         logBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         logBox.Multiline = true;
         logBox.ReadOnly = true;
@@ -205,7 +211,7 @@ internal sealed class InstallerForm : Form
         closeButton.Click += (_, _) => Close();
 
         Controls.AddRange([
-            title, subtitle, versionNote, dirLabel, installDirBox, browseButton, forceCloseBox,
+            title, subtitle, versionNote, dirLabel, installDirBox, browseButton, forceCloseBox, profilesBox,
             progress, logBox, closeButton, restoreButton, installButton
         ]);
     }
@@ -241,6 +247,7 @@ internal sealed class InstallerForm : Form
                     Operation = operation,
                     InstallDir = installDir,
                     ForceClose = forceCloseBox.Checked,
+                    IncludeProfiles = profilesBox.Checked,
                     ShowResult = true
                 };
                 var exitCode = await Task.Run(() => Program.RelaunchElevated(options));
@@ -252,7 +259,7 @@ internal sealed class InstallerForm : Form
             {
                 var result = await Task.Run(() =>
                 {
-                    using var bundle = PayloadBundle.Open(AppendLog);
+                    using var bundle = PayloadBundle.Open(AppendLog, profilesBox.Checked, installDir);
                     return operation == "restore"
                         ? PatchEngine.Restore(bundle, installDir, PatchEngine.DefaultDataRoot, forceCloseBox.Checked, AppendLog)
                         : PatchEngine.Install(bundle, installDir, PatchEngine.DefaultDataRoot, forceCloseBox.Checked, false, AppendLog);
@@ -282,6 +289,8 @@ internal sealed class InstallerForm : Form
         restoreButton.Enabled = enabled;
         browseButton.Enabled = enabled;
         installDirBox.Enabled = enabled;
+        profilesBox.Enabled = enabled;
+        forceCloseBox.Enabled = enabled;
     }
 
     private void AppendLog(string message)
@@ -305,6 +314,7 @@ internal sealed class CommandOptions
     public bool DryRun { get; set; }
     public bool ShowResult { get; set; }
     public bool NoElevate { get; set; }
+    public bool IncludeProfiles { get; set; }
 
     public static CommandOptions Parse(string[] args)
     {
@@ -323,6 +333,7 @@ internal sealed class CommandOptions
                 case "--dry-run": options.DryRun = true; break;
                 case "--show-result": options.ShowResult = true; break;
                 case "--no-elevate": options.NoElevate = true; break;
+                case "--include-profiles": options.IncludeProfiles = true; break;
                 default: throw new ArgumentException($"Unknown argument: {args[i]}");
             }
         }
@@ -339,6 +350,7 @@ internal sealed class CommandOptions
         if (ForceClose) args.Add("--force-close");
         if (DryRun) args.Add("--dry-run");
         if (ShowResult) args.Add("--show-result");
+        if (IncludeProfiles) args.Add("--include-profiles");
         if (includeNoElevate || NoElevate) args.Add("--no-elevate");
         return string.Join(" ", args);
     }

@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)][string]$ManifestPath,
     [Parameter(Mandatory)][string]$WorkDirectory,
     [string]$CleanCoreDirectory,
+    [switch]$IncludeProfiles,
     [switch]$SmokeTest
 )
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,7 @@ $data = Join-Path $work 'backups'
 function Run-Patcher([string[]]$Operation, [int]$Expected = 0) {
     $testLog = Join-Path $work ([Guid]::NewGuid().ToString('N') + '.log')
     $arguments = @($Operation) + @('--install-dir', "`"$target`"", '--data-root', "`"$data`"", '--no-elevate', '--log-file', "`"$testLog`"")
+    if ($IncludeProfiles) { $arguments += '--include-profiles' }
     $proc = Start-Process -FilePath $installer -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
     if ($proc.ExitCode -ne $Expected) {
         if (Test-Path $testLog) { Get-Content $testLog | Write-Host }
@@ -44,6 +46,10 @@ function Assert-Snapshot($Before) {
     }
 }
 # A stale marker must not override clean-core detection, and must survive rollback.
+$userProfile = Join-Path $target 'data_dir/user/default/machine/Existing custom printer.json'
+New-Item -ItemType Directory -Force (Split-Path -Parent $userProfile) | Out-Null
+'{"name":"Existing custom printer","private_setting":"preserve-me"}' | Set-Content $userProfile
+$userProfileHash = (Get-FileHash $userProfile).Hash
 $marker = Join-Path $target '.creality-orca-patch/current.json'
 New-Item -ItemType Directory -Force (Split-Path -Parent $marker) | Out-Null
 '{"PatchId":"old-2.3.2-marker"}' | Set-Content $marker
@@ -58,6 +64,10 @@ foreach ($file in $manifest.Files) {
         throw "Installed hash mismatch: $($file.RelativePath)"
     }
 }
+if ((Get-FileHash $userProfile).Hash -ne $userProfileHash) { throw 'Existing user preset was overwritten.' }
+$ownerFiles = @(Get-ChildItem (Join-Path $target 'resources/profiles/Creality') -Filter 'Extrautior *.json' -Recurse -File)
+if ($IncludeProfiles -and $ownerFiles.Count -ne 11) { throw 'Optional presets missing.' }
+if (!$IncludeProfiles -and $ownerFiles.Count -ne 0) { throw 'Unchecked option installed owner presets.' }
 Run-Patcher @('--install') # idempotent exact-patch verification
 if ($SmokeTest) {
     # Load the real rebuilt core and its runtime DLLs in a separate data directory.
