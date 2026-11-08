@@ -130,7 +130,7 @@ index e7ddd66e..2d71aa65 100644
  }
 diff --git a/resources/profiles/Creality/filament/Extrautior Duramic PLA @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Duramic PLA @Extrautior Hi.json
 new file mode 100644
-index 00000000..3bebe748
+index 00000000..2346412c
 --- /dev/null
 +++ b/resources/profiles/Creality/filament/Extrautior Duramic PLA @Extrautior Hi.json	
 @@ -0,0 +1,54 @@
@@ -140,6 +140,7 @@ index 00000000..3bebe748
 +	"inherits": "Generic PLA @Creality Hi-all",
 +	"from": "system",
 +	"setting_id": "sG9g9WYy9DjpaOQz",
++	"filament_id": "OFRdrUGg",
 +	"instantiation": "true",
 +	"dont_slow_down_outer_wall": [
 +		"1"
@@ -185,8 +186,7 @@ index 00000000..3bebe748
 +	],
 +	"filament_type": [
 +		"PLA"
-+	],
-+	"filament_id": "OFRdrUGg"
++	]
 +}
 diff --git a/resources/profiles/Creality/filament/Extrautior Generic PETG @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Generic PETG @Extrautior Hi.json
 new file mode 100644
@@ -234,7 +234,7 @@ index 00000000..3f3f4dda
 +}
 diff --git a/resources/profiles/Creality/filament/Extrautior Inslogic PLA PRO @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Inslogic PLA PRO @Extrautior Hi.json
 new file mode 100644
-index 00000000..6552de69
+index 00000000..41d65616
 --- /dev/null
 +++ b/resources/profiles/Creality/filament/Extrautior Inslogic PLA PRO @Extrautior Hi.json	
 @@ -0,0 +1,54 @@
@@ -244,6 +244,7 @@ index 00000000..6552de69
 +	"inherits": "Generic PLA @Creality Hi-all",
 +	"from": "system",
 +	"setting_id": "G7NWMo18bE2CnMEX",
++	"filament_id": "OFOAYobQ",
 +	"instantiation": "true",
 +	"dont_slow_down_outer_wall": [
 +		"1"
@@ -289,12 +290,11 @@ index 00000000..6552de69
 +	],
 +	"filament_type": [
 +		"PLA"
-+	],
-+	"filament_id": "OFOAYobQ"
++	]
 +}
 diff --git a/resources/profiles/Creality/filament/Extrautior Inslogic WoodFill PLA @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Inslogic WoodFill PLA @Extrautior Hi.json
 new file mode 100644
-index 00000000..f0b293ac
+index 00000000..f5632d42
 --- /dev/null
 +++ b/resources/profiles/Creality/filament/Extrautior Inslogic WoodFill PLA @Extrautior Hi.json	
 @@ -0,0 +1,54 @@
@@ -304,6 +304,7 @@ index 00000000..f0b293ac
 +	"inherits": "Generic PLA @Creality Hi-all",
 +	"from": "system",
 +	"setting_id": "9URcnHEmwoDQ2ThO",
++	"filament_id": "OFXuJwxI",
 +	"instantiation": "true",
 +	"dont_slow_down_outer_wall": [
 +		"1"
@@ -349,12 +350,11 @@ index 00000000..f0b293ac
 +	],
 +	"filament_type": [
 +		"PLA"
-+	],
-+	"filament_id": "OFXuJwxI"
++	]
 +}
 diff --git a/resources/profiles/Creality/filament/Extrautior Sunlu HS PLA+ 2.0 @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Sunlu HS PLA+ 2.0 @Extrautior Hi.json
 new file mode 100644
-index 00000000..3ba0f0e6
+index 00000000..d5860776
 --- /dev/null
 +++ b/resources/profiles/Creality/filament/Extrautior Sunlu HS PLA+ 2.0 @Extrautior Hi.json	
 @@ -0,0 +1,54 @@
@@ -364,6 +364,7 @@ index 00000000..3ba0f0e6
 +	"inherits": "Generic PLA @Creality Hi-all",
 +	"from": "system",
 +	"setting_id": "6agkIoNIVLpa19Kb",
++	"filament_id": "OFEe5b4x",
 +	"instantiation": "true",
 +	"dont_slow_down_outer_wall": [
 +		"1"
@@ -409,12 +410,11 @@ index 00000000..3ba0f0e6
 +	],
 +	"filament_type": [
 +		"PLA"
-+	],
-+	"filament_id": "OFEe5b4x"
++	]
 +}
 diff --git a/resources/profiles/Creality/filament/Extrautior Yasin ABS @Extrautior Hi.json b/resources/profiles/Creality/filament/Extrautior Yasin ABS @Extrautior Hi.json
 new file mode 100644
-index 00000000..79f71c83
+index 00000000..175dbf85
 --- /dev/null
 +++ b/resources/profiles/Creality/filament/Extrautior Yasin ABS @Extrautior Hi.json	
 @@ -0,0 +1,81 @@
@@ -424,6 +424,7 @@ index 00000000..79f71c83
 +	"inherits": "Generic PLA @Creality Hi-all",
 +	"from": "system",
 +	"setting_id": "qkFz6U91UQ3OxvaC",
++	"filament_id": "OFdWyVsD",
 +	"instantiation": "true",
 +	"close_fan_the_first_x_layers": [
 +		"3"
@@ -496,8 +497,7 @@ index 00000000..79f71c83
 +	],
 +	"filament_vendor": [
 +		"Yasin"
-+	],
-+	"filament_id": "OFdWyVsD"
++	]
 +}
 diff --git a/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json b/resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json
 index 613089a7..34b881f6 100644
@@ -569,10 +569,10 @@ index 95d55f0a..00e458c8 100644
  	"printhost_ssl_ignore_revoke": "0",
 diff --git a/resources/profiles/Creality/machine/Extrautior Creality Hi 0.4 nozzle - Extrautior.json b/resources/profiles/Creality/machine/Extrautior Creality Hi 0.4 nozzle - Extrautior.json
 new file mode 100644
-index 00000000..f3b33014
+index 00000000..a97468fb
 --- /dev/null
 +++ b/resources/profiles/Creality/machine/Extrautior Creality Hi 0.4 nozzle - Extrautior.json	
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,56 @@
 +{
 +	"type": "machine",
 +	"name": "Creality Hi 0.4 nozzle - Extrautior",
@@ -599,6 +599,7 @@ index 00000000..f3b33014
 +		"1000"
 +	],
 +	"machine_max_junction_deviation": [
++		"0.01",
 +		"0.01"
 +	],
 +	"machine_max_speed_x": [

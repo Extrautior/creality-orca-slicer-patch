@@ -28,6 +28,8 @@ jobs:
         run: node tests/test_webview_bridge.mjs orca
       - name: Check bundled preset privacy and defaults
         run: python3 tests/test_public_presets.py orca
+      - name: Check Creality profile schema and identities
+        run: python3 orca/scripts/orca_profile_tool.py check --vendor Creality --profiles orca/resources/profiles
   windows:
     needs: protocol
     runs-on: windows-2022
@@ -47,6 +49,11 @@ jobs:
           repository: OrcaSlicer/OrcaSlicer
           ref: 40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19
           path: orca
+      - name: Cache pinned web-resource archive
+        uses: actions/cache@v4
+        with:
+          path: build/downloads/web-assets-source.zip
+          key: creality-web-assets-9eea9eac1c3602b4
       - name: Prepare pinned source and verified web resources
         run: ./scripts/prepare-2.5.ps1 -OrcaSource orca -WorkDirectory build/downloads
       - name: Set up native Perl

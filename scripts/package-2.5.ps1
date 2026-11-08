@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Force $WorkDirectory, $OutputDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
 $output = (Resolve-Path $OutputDirectory).Path
 $archive = Join-Path $work 'official.zip'
-if (!(Test-Path $archive)) { Invoke-WebRequest $config.OfficialArchive -OutFile $archive }
+if (!(Test-Path $archive)) { Invoke-WebRequest $config.OfficialArchive -OutFile $archive -MaximumRetryCount 4 -RetryIntervalSec 3 }
 if ((Get-FileHash $archive).Hash -ne $config.OfficialArchiveSha256) { throw 'Official archive checksum mismatch.' }
 $clean = Join-Path $work 'official'
 if (Test-Path $clean) { throw 'Use a fresh package work directory.' }

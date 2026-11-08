@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Force $WorkDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
 $archive = Join-Path $work 'web-assets-source.zip'
 if (!(Test-Path $archive)) {
-    Invoke-WebRequest $config.WebAssetsArchive -OutFile $archive
+    Invoke-WebRequest $config.WebAssetsArchive -OutFile $archive -MaximumRetryCount 4 -RetryIntervalSec 3
 }
 if ((Get-FileHash $archive).Hash -ne $config.WebAssetsArchiveSha256) { throw 'Web asset archive checksum mismatch.' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
