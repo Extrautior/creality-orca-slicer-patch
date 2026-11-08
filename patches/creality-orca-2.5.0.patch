@@ -567,6 +567,17 @@ index 95d55f0a..00e458c8 100644
  	"printer_technology": "FFF",
  	"printhost_authorization_type": "key",
  	"printhost_ssl_ignore_revoke": "0",
+diff --git a/resources/profiles/Creality/machine/Creality Hi.json b/resources/profiles/Creality/machine/Creality Hi.json
+index 8bb1244b..2fb8781e 100644
+--- a/resources/profiles/Creality/machine/Creality Hi.json	
++++ b/resources/profiles/Creality/machine/Creality Hi.json	
+@@ -9,5 +9,5 @@
+ 	"bed_texture": "creality_hi_buildplate_texture.svg",
+ 	"default_bed_type": "Textured PEI Plate",
+ 	"hotend_model": "",
+-	"default_materials": "Generic ABS @Creality Hi-all;Generic ABS @Hi-all;Generic ASA @Creality Hi-all;Generic ASA-CF @Creality Hi-all;Generic PETG @Creality Hi-all;Generic PETG @Hi-all;Generic PETG-CF @Creality Hi-all;Generic PLA @Creality Hi-all;Generic PLA @Hi-all;Generic PLA High Speed @Creality Hi-all;Generic PLA Matte @Creality Hi-all;Generic PLA Silk @Creality Hi-all;Generic PLA-CF @Creality Hi-all;Generic PLA Wood @Creality Hi-all;Generic TPU @Creality Hi-all;Hyper PLA @Hi-all"
++	"default_materials": "Generic ABS @Creality Hi-all;Generic ABS @Hi-all;Generic ASA @Creality Hi-all;Generic ASA-CF @Creality Hi-all;Generic PETG @Creality Hi-all;Generic PETG @Hi-all;Generic PETG-CF @Creality Hi-all;Generic PLA @Creality Hi-all;Generic PLA @Hi-all;Generic PLA High Speed @Creality Hi-all;Generic PLA Matte @Creality Hi-all;Generic PLA Silk @Creality Hi-all;Generic PLA-CF @Creality Hi-all;Generic PLA Wood @Creality Hi-all;Generic TPU @Creality Hi-all;Hyper PLA @Hi-all;Duramic PLA @Extrautior Hi;Generic PETG @Extrautior Hi;Inslogic PLA PRO @Extrautior Hi;Inslogic WoodFill PLA @Extrautior Hi;Sunlu HS PLA+ 2.0 @Extrautior Hi;Yasin ABS @Extrautior Hi"
+ }
 diff --git a/resources/profiles/Creality/machine/Extrautior Creality Hi 0.4 nozzle - Extrautior.json b/resources/profiles/Creality/machine/Extrautior Creality Hi 0.4 nozzle - Extrautior.json
 new file mode 100644
 index 00000000..a97468fb

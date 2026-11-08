@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Force $WorkDirectory, $OutputDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
 $output = (Resolve-Path $OutputDirectory).Path
 $archive = Join-Path $work 'official.zip'
-if (!(Test-Path $archive)) { Invoke-WebRequest $config.OfficialArchive -OutFile $archive -MaximumRetryCount 4 -RetryIntervalSec 3 }
+if (!(Test-Path $archive)) { Invoke-WebRequest $config.OfficialArchive -Headers @{Accept='application/octet-stream'} -OutFile $archive -MaximumRetryCount 4 -RetryIntervalSec 3 }
 if ((Get-FileHash $archive).Hash -ne $config.OfficialArchiveSha256) { throw 'Official archive checksum mismatch.' }
 $clean = Join-Path $work 'official'
 if (Test-Path $clean) { throw 'Use a fresh package work directory.' }
@@ -24,6 +24,7 @@ $root = Join-Path $payload 'root'
 New-Item -ItemType Directory -Force $root | Out-Null
 $paths = @('orca-slicer.exe', 'OrcaSlicer.dll',
     'resources/profiles/Creality.json',
+    'resources/profiles/Creality/machine/Creality Hi.json',
     'resources/profiles/Creality/machine/Creality Hi 0.4 nozzle.json',
     'resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json',
     'resources/profiles/Creality/machineList.json')
