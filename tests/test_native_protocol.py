@@ -50,6 +50,7 @@ host = 'class CrealityPrint {\npublic:\n'+slot+r'''
     std::string response;
     std::string query_boxes_info() const { return response; }
     std::vector<CfsSlotInfo> query_cfs_slots(bool include_external_spool) const;
+    static std::vector<CfsSlotInfo> parse_cfs_slots(const std::string& boxes_json, bool include_external_spool);
     static bool model_supports_multi_color(const std::string& model);
     static std::string model_display_name(const std::string& model);
     static std::vector<std::string> start_print_commands(bool multi_color, const std::string& path, const std::map<std::string, std::string>& info);

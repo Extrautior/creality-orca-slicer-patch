@@ -4,14 +4,18 @@ This repository packages an unofficial Windows compatibility patch that adds the
 
 ## Current Release
 
-The published installer below is for **2.4.2 stable**. The **2.5.0-beta source port**
+The published installer below is for **2.4.2 stable**. The **2.5.0 source port**
 is in [PR #1](https://github.com/Extrautior/creality-orca-slicer-patch/pull/1).
-It targets official commit `345efec64c7b95a05ce5cf96df0dde66a158835c`.
-Orca 2.5 is currently a prerelease; it is a separate target, not an update accepted by the 2.4.2 installer.
+It targets official commit `40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19`.
+The new target is **OrcaSlicer 2.5.0 stable** (November 7, 2026).
+The 2.4.2 installer only accepts its original version.
 
 The 2.5 port retains the device page and CFS controls while adapting lazy webview recreation,
 filament-list refresh, Creality discovery, timelapse Off, and Default/Fast flush-multiplier export.
 See [the 2.5 build guide](docs/ORCA_2.5_PORT.md) for build status, packaging, and the remaining runtime checks.
+The 2.5 package includes **Creality Hi 0.4 nozzle - Extrautior**, four print presets
+(0.08/0.12/0.20/0.28 mm) and six tuned filament presets. Connection addresses,
+credentials and personal preset metadata are excluded.
 Do not install the old binaries into 2.5 or interpret patch application as proof of runtime compatibility.
 
 - Target: OrcaSlicer `2.4.2` Windows x64
@@ -68,7 +72,7 @@ Run the same installer and select **Restore Backup** to undo the patch.
 ## Repository Layout
 
 - `patches/creality-orca-2.4.2.patch` - current source patch.
-- `patches/creality-orca-2.5.0-beta.patch` - 2.5 beta source port, pending native build/runtime verification.
+- `patches/creality-orca-2.5.0.patch` - 2.5 stable source port, pending native build/runtime verification.
 - `patches/creality-orca-2.4.0-beta.patch` - previous 2.4 beta patch.
 - `patches/creality-orca-2.3.2.patch` - previous stable patch.
 - `installer/` - .NET 8 WinForms installer and transactional patch engine.

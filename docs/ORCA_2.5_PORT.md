@@ -1,9 +1,9 @@
-# OrcaSlicer 2.5.0-beta port
+# OrcaSlicer 2.5.0 port
 
-Target: Windows x64 official **v2.5.0-beta**, commit
-`345efec64c7b95a05ce5cf96df0dde66a158835c`.
-2.4.2 is still the latest stable release. The beta was published October 27, 2026.
-This target does not accept alpha, nightlies, ARM64, or a future 2.5 final build.
+Target: Windows x64 official **v2.5.0**, commit
+`40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19`.
+This stable release was published November 7, 2026.
+The installer accepts the exact Windows x64 stable core hashes.
 
 ## Compatibility changes
 
@@ -40,7 +40,7 @@ Use a clean checkout with Visual Studio 2022 C++ tools, CMake and native Windows
 The Windows build script changed in 2.5; use `build_win.bat`, not the old release script.
 
 ```powershell
-git clone --branch v2.5.0-beta --depth 1 https://github.com/OrcaSlicer/OrcaSlicer.git orca
+git clone --branch v2.5.0 --depth 1 https://github.com/OrcaSlicer/OrcaSlicer.git orca
 ./scripts/prepare-2.5.ps1 -OrcaSource orca -WorkDirectory build/downloads
 Push-Location orca
 ./build_win.bat -d --arch x64 --msvc --msbuild --vs 2022 -j 3
@@ -57,8 +57,8 @@ Preparation verifies the source commit, patch application and all inherited web
 asset hashes. Web assets come from the existing pinned release archive; none of
 its core binaries or old machine profiles are copied.
 
-The patch disables the shallow wxWidgets clone because the beta pins a commit
-that is no longer a branch tip. It retains the exact pinned wxWidgets revision.
+The patch disables the shallow wxWidgets clone so it can still retrieve the
+exact pinned revision if the upstream branch moves.
 
 Packaging verifies the official 2.5 portable archive's SHA-256, derives the exact
 clean executable/DLL hashes, includes freshly built native DLLs, generates the
@@ -73,7 +73,7 @@ It does not publish a GitHub release or claim printer hardware validation.
 
 Locally verified during this port:
 
-- Exact source patch applies to a fresh official 2.5 beta checkout.
+- Exact source patch applies to a fresh official 2.5 stable checkout.
 - Static profile checks pass across all 71 vendors, with no errors or warnings;
   the patched Creality bundle version advances from 02.03.02.87 to 02.03.02.88.
 - Every inherited web asset matches the pinned 2.4.2 manifest.

@@ -1,7 +1,7 @@
 name: Orca 2.5 Windows compatibility
 on:
   pull_request:
-    paths: ['patches/creality-orca-2.5.0-beta.patch', 'scripts/**', 'installer/**', 'tests/**', 'config/**', '.github/workflows/port-2.5.yml']
+    paths: ['patches/creality-orca-2.5.0.patch', 'scripts/**', 'installer/**', 'tests/**', 'config/**', '.github/workflows/port-2.5.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,16 +16,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: OrcaSlicer/OrcaSlicer
-          ref: 345efec64c7b95a05ce5cf96df0dde66a158835c
+          ref: 40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19
           path: orca
       - name: Apply exact source patch
         run: |
-          git -C orca apply --check ../patches/creality-orca-2.5.0-beta.patch
-          git -C orca apply ../patches/creality-orca-2.5.0-beta.patch
+          git -C orca apply --check ../patches/creality-orca-2.5.0.patch
+          git -C orca apply ../patches/creality-orca-2.5.0.patch
       - name: Test actual CFS parser and baked multiplier export
         run: python3 tests/test_native_protocol.py --source orca
       - name: Test recreated webview JSON bridge
         run: node tests/test_webview_bridge.mjs orca
+      - name: Check bundled preset privacy and defaults
+        run: python3 tests/test_public_presets.py orca
   windows:
     needs: protocol
     runs-on: windows-2022
@@ -43,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: OrcaSlicer/OrcaSlicer
-          ref: 345efec64c7b95a05ce5cf96df0dde66a158835c
+          ref: 40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19
           path: orca
       - name: Prepare pinned source and verified web resources
         run: ./scripts/prepare-2.5.ps1 -OrcaSource orca -WorkDirectory build/downloads
@@ -56,14 +58,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: orca/deps/build/OrcaSlicer_dep
-          key: orca-25-345efec-win2022-msvc-deps-v1
+          key: orca-25-40ecc66-win2022-msvc-deps-v1
       - name: Resume an incomplete dependency build
         if: steps.deps.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v4
         with:
           path: orca/deps/build
-          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: orca-25-345efec-win2022-msvc-state-
+          key: orca-25-40ecc66-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: orca-25-40ecc66-win2022-msvc-state-
       - name: Build dependencies
         if: steps.deps.outputs.cache-hit != 'true'
         working-directory: orca
@@ -78,13 +80,13 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: orca/deps/build
-          key: orca-25-345efec-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
+          key: orca-25-40ecc66-win2022-msvc-state-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Save compiled dependencies before compiling the port
         if: steps.deps.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: orca/deps/build/OrcaSlicer_dep
-          key: orca-25-345efec-win2022-msvc-deps-v1
+          key: orca-25-40ecc66-win2022-msvc-deps-v1
       - name: Build patched OrcaSlicer
         working-directory: orca
         run: |
@@ -97,12 +99,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Package and verify installer
-        run: ./scripts/package-2.5.ps1 -BuiltDirectory orca/build/OrcaSlicer -WorkDirectory build/package -OutputDirectory release/2.5.0-beta
+        run: ./scripts/package-2.5.ps1 -BuiltDirectory orca/build/OrcaSlicer -WorkDirectory build/package -OutputDirectory release/2.5.0
       - name: Upload tested build and manifest
         uses: actions/upload-artifact@v4
         with:
-          name: creality-orca-2.5.0-beta-windows-x64
-          path: release/2.5.0-beta/
+          name: creality-orca-2.5.0-windows-x64
+          path: release/2.5.0/
           if-no-files-found: error
       - name: Save build diagnostics
         if: failure()

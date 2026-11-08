@@ -11,8 +11,8 @@ $root = Join-Path $payload 'root'
 $manifest = [ordered]@{
     PatchId = 'synthetic-test-fixture-only'
     Name = 'Synthetic fixture, not Orca binaries'
-    TargetVersion = '2.5.0-beta'
-    TargetCommit = '345efec64c7b95a05ce5cf96df0dde66a158835c'
+    TargetVersion = '2.5.0'
+    TargetCommit = '40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19'
     ExpectedCleanCore = [ordered]@{}
     Files = @()
 }
@@ -32,4 +32,4 @@ $manifestPath = Join-Path $payload 'manifest.json'
 $manifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8NoBOM
 $publish = Join-Path $work 'published'
 & (Join-Path $repo 'scripts/rebuild-installer.ps1') -PayloadDirectory $payload -OutputDirectory $publish
-& (Join-Path $repo 'scripts/test-installer.ps1') -Installer (Join-Path $publish 'Creality-OrcaSlicer-2.5.0-beta-Patch-Installer.exe') -CleanDirectory $clean -ManifestPath $manifestPath -WorkDirectory (Join-Path $work 'roundtrip')
+& (Join-Path $repo 'scripts/test-installer.ps1') -Installer (Join-Path $publish 'Creality-OrcaSlicer-2.5.0-Patch-Installer.exe') -CleanDirectory $clean -ManifestPath $manifestPath -WorkDirectory (Join-Path $work 'roundtrip')

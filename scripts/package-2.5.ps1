@@ -1,11 +1,11 @@
 param(
     [Parameter(Mandatory)][string]$BuiltDirectory,
     [Parameter(Mandatory)][string]$WorkDirectory,
-    [string]$OutputDirectory = 'release/2.5.0-beta'
+    [string]$OutputDirectory = 'release/2.5.0'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$config = Get-Content (Join-Path $repo 'config/orca-2.5.0-beta.json') -Raw | ConvertFrom-Json
+$config = Get-Content (Join-Path $repo 'config/orca-2.5.0.json') -Raw | ConvertFrom-Json
 $built = (Resolve-Path $BuiltDirectory).Path
 New-Item -ItemType Directory -Force $WorkDirectory, $OutputDirectory | Out-Null
 $work = (Resolve-Path $WorkDirectory).Path
@@ -28,6 +28,8 @@ $paths = @('orca-slicer.exe', 'OrcaSlicer.dll',
     'resources/profiles/Creality/machine/Creality Hi 0.6 nozzle.json',
     'resources/profiles/Creality/machineList.json')
 # Include the native runtime DLLs from the same build as OrcaSlicer.dll.
+$paths += Get-ChildItem (Join-Path $built 'resources/profiles/Creality') -Filter 'Extrautior *.json' -File -Recurse |
+    ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
 $paths += Get-ChildItem $built -Filter '*.dll' -File | ForEach-Object Name
 $paths += Get-ChildItem (Join-Path $built 'resources/web/deviceMgr') -File -Recurse |
     ForEach-Object { [IO.Path]::GetRelativePath($built, $_.FullName).Replace('\','/') }
@@ -63,7 +65,7 @@ $installer = Join-Path $output "Creality-OrcaSlicer-$($config.Version)-Patch-Ins
 if (!(Test-Path $installer)) { throw 'Installer was not generated.' }
 & (Join-Path $PSScriptRoot 'test-installer.ps1') -Installer $installer -CleanDirectory $clean -ManifestPath (Join-Path $payload 'manifest.json') -WorkDirectory (Join-Path $work 'test') -SmokeTest
 Copy-Item (Join-Path $payload 'manifest.json') (Join-Path $output 'payload-manifest.json')
-Copy-Item (Join-Path $repo 'patches/creality-orca-2.5.0-beta.patch') $output
+Copy-Item (Join-Path $repo 'patches/creality-orca-2.5.0.patch') $output
 Get-ChildItem $output -File | Where-Object Name -ne 'SHA256SUMS.txt' |
     ForEach-Object { "$((Get-FileHash $_.FullName).Hash)  $($_.Name)" } |
     Set-Content (Join-Path $output 'SHA256SUMS.txt') -Encoding ascii
