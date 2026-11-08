@@ -1,0 +1,9 @@
+{
+  "Version": "2.5.0-beta",
+  "Commit": "345efec64c7b95a05ce5cf96df0dde66a158835c",
+  "PatchId": "creality-cfs-orca-2.5.0-beta-r1-20261029",
+  "OfficialArchive": "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v2.5.0-beta/OrcaSlicer_Windows_V2.5.0-beta_x64_portable.zip",
+  "OfficialArchiveSha256": "E11DF6023A91AE771399F9BEAEB333473A2C4E4F50A0126AE0A2E25B88D8D0C2",
+  "WebAssetsArchive": "https://github.com/Extrautior/creality-orca-slicer-patch/releases/download/v2.4.2-creality-cfs-r1-20260709/Creality-OrcaSlicer-2.4.2-Patcher-Source.zip",
+  "WebAssetsArchiveSha256": "9EEA9EAC1C3602B4906C092F3E999C36C03C074AA673BEB39A2064E994DE5230"
+}

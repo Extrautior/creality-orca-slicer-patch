@@ -1,71 +1,62 @@
 # Creality Hi / CFS Patch for OrcaSlicer
 
-This repository packages an unofficial Windows compatibility patch that adds the Creality Hi, CFS, and Creality device-page workflow to OrcaSlicer.
+Unofficial Windows x64 patch for **OrcaSlicer 2.5.0 stable**, upstream commit
+`40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19`.
 
-## Current Release
+## Download
 
-- Target: OrcaSlicer `2.4.2` Windows x64
-- Exact upstream commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
-- Patch revision: `creality-cfs-orca-2.4.2-r1-20260709`
+[Download the latest patch installer](https://github.com/Extrautior/creality-orca-slicer-patch/releases/latest/download/Creality-OrcaSlicer-2.5.0-Patch-Installer.exe)
 
-Download the installer from the latest GitHub release:
-
-`Creality-OrcaSlicer-2.4.2-Patch-Installer.exe`
-
-The installer validates the real OrcaSlicer executable and DLL hashes. It will not patch another version, a development build, or a partially modified installation.
-
-## Features
-
-- Creality device page inside OrcaSlicer.
-- Creality Hi and CFS discovery, mapping, sync, edit, feed, and retract support.
-- External spool-holder selection.
-- Creality camera/WebRTC bridge and camera recovery.
-- Local-file export and logo-light controls.
-- Creality print metadata, layer/time markers, and flush-matrix handling.
-- Corrected Creality Hi 0.4 mm and 0.6 mm profiles.
-- Compatibility with OrcaSlicer 2.4's printer web-handler architecture.
-- Preservation of OrcaSlicer 2.4.2 webview behavior while applying the Creality bridge.
-- Timelapse control remains visible for Creality/time-lapse-capable printers and includes an **Off** option.
-- Timelapse **Off** persists on reload in OrcaSlicer 2.4.2.
+The current release is **2.5.0 revision 4**. Older 2.4 installers remain in the
+[release archive](https://github.com/Extrautior/creality-orca-slicer-patch/releases).
+Use the matching official OrcaSlicer version; other versions are rejected.
 
 ## Install
 
-1. Install the official OrcaSlicer `2.4.2` build.
-2. Close OrcaSlicer.
-3. Run the patch installer.
-4. Confirm the OrcaSlicer folder, normally `C:\Program Files\OrcaSlicer`.
-5. Select **Install / Verify**.
+1. Install official **OrcaSlicer 2.5.0 stable, Windows x64** (installer or portable).
+2. Close OrcaSlicer normally and run the patch installer.
+3. Select the OrcaSlicer folder and choose **Install / Verify**. Approve Windows
+   administrator permission when installing under Program Files.
+4. Optionally check **Install Extrautior Hi printer, filament and print presets**.
+   This is **unchecked by default**. The device page, CFS and flushing fixes install
+   with either choice. Existing user presets are not replaced. Presets installed
+   by an earlier patch are retained when this box is left unchecked.
+5. Reopen OrcaSlicer. Set your printer connection to **Creality Print** and enter
+   your own address. The Device tab opens the Creality page. In Prepare, use
+   **Synchronize filament list from AMS/CFS** beside the Filament heading.
 
-The installer creates a rollback backup under:
+When selected, the optional bundle adds **Creality Hi 0.4 nozzle - Extrautior**,
+four process presets (0.08/0.12/0.20/0.28 mm) and six filament presets: Duramic PLA,
+Inslogic PLA PRO, Inslogic WoodFill PLA, Sunlu HS PLA+ 2.0, Generic PETG and Yasin ABS.
+Addresses, credentials and personal preset metadata are excluded.
 
-```text
-%LOCALAPPDATA%\CrealityOrcaPatcher\Backups\2.4.2
-```
+Run the same installer and choose **Restore Backup** to undo the last installation
+or preset addition. Backups are stored under `%LOCALAPPDATA%\CrealityOrcaPatcher`.
 
-Run the same installer and select **Restore Backup** to undo the patch.
+## Features and validation
 
-## Safety
+- Creality device page, Hi/CFS discovery and filament sync, mapping, slot controls,
+  external spool selection, camera bridge, local-file export and logo-light controls.
+- Exported Creality **flush_multiplier always stays 1**. The chosen factor is baked
+  into exported volumes, including factors below 1. Saved project matrices stay unbaked.
+- Orca 2.5 webview lifecycle and asynchronous printer-query behavior are preserved.
+- Complete Creality preset bundle for Orca 2.5's `.opc` cache packaging.
+- Optional public presets; existing user profiles are preserved.
 
-- Embedded payload files are SHA-256 verified before installation.
-- Core OrcaSlicer binaries must match the supported clean 2.4.2 release.
-- Every overwritten file is backed up.
-- Copies are written and verified before replacing their targets.
-- The completed installation is verified against the payload manifest.
-- Rollback restores files byte-for-byte and removes newly introduced files.
-- Rollback refuses to overwrite an OrcaSlicer build changed after patching.
-- A stale marker from the older 2.3.2 patch is ignored for version detection.
+The full native Windows build and real G-code exports passed. The Creality Device
+page was observed on a Hi, and the running patched app read four CFS slots. Both
+installer choices pass installation, payload verification, tamper rejection and
+exact rollback tests. Physical feed/retract, camera video and supervised printing
+still require owner validation. The patch changes no printer firmware.
 
-## Repository Layout
+The installer verifies exact supported core hashes, backs up changed files and
+verifies the complete installed payload. Modified or unsupported builds are rejected.
+It is not code-signed; Windows or endpoint protection may prompt for review.
 
-- `patches/creality-orca-2.4.2.patch` - current source patch.
-- `patches/creality-orca-2.4.0-beta.patch` - previous 2.4 beta patch.
-- `patches/creality-orca-2.3.2.patch` - previous stable patch.
-- `installer/` - .NET 8 WinForms installer and transactional patch engine.
-- `docs/BUILD_AND_UPDATE.md` - build and packaging guide.
-- `docs/PATCH_SUMMARY.md` - implementation overview.
-- `docs/payload-manifest-2.4.2.json` - current release payload hashes.
-- `release/` - release notes and checksums.
+## Source
 
-## Scope
-
-The patch does not modify printer firmware or files stored on the printer. It is not code-signed, so Windows SmartScreen may show an unknown-publisher warning.
+- [2.5 source patch](patches/creality-orca-2.5.0.patch)
+- [Build and port notes](docs/ORCA_2.5_PORT.md)
+- [Revision 4 release notes](release/RELEASE_NOTES_2.5.0_r4.md)
+- `installer/` contains the .NET WinForms installer and transactional patch engine.
+- `scripts/package-2.5.ps1` builds and tests the release from a native Orca build.

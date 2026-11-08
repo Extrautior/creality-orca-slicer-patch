@@ -1,0 +1,2 @@
+# Patches must keep LF, including Git's no-final-newline marker.
+*.patch text eol=lf

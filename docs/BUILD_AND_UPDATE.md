@@ -1,5 +1,8 @@
 # Build And Update Guide
 
+For the 2.5 beta port, use [ORCA_2.5_PORT.md](ORCA_2.5_PORT.md).
+The instructions below document the published 2.4.2 release and its older toolchain.
+
 ## Current Base
 
 - OrcaSlicer version: `2.4.2`

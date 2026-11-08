@@ -1,0 +1,15 @@
+{
+  "Version": "2.5.0",
+  "Commit": "40ecc66f78ed72dc368e0c1ebe40d77f00cc8a19",
+  "PatchId": "creality-cfs-orca-2.5.0-r4-20261108",
+  "OfficialArchive": "https://api.github.com/repos/OrcaSlicer/OrcaSlicer/releases/assets/719942452",
+  "OfficialArchiveSha256": "E355D9F8AC0BE4EFA4B4F99ECAE448D4E99DEF8DEE97683847EDE5AA0CCB9166",
+  "AdditionalCleanCores": [
+    {
+      "orca-slicer.exe": "A012BFCAD45B7DECD7C49971FAAC9E4E63D15B478059D986BCB143A9AA444542",
+      "OrcaSlicer.dll": "6C356C2B4AA09253FB0E17E69EF2BEA5A675270DE2E59E03F81AC16D48B57A79"
+    }
+  ],
+  "WebAssetsArchive": "https://api.github.com/repos/Extrautior/creality-orca-slicer-patch/releases/assets/471417717",
+  "WebAssetsArchiveSha256": "9EEA9EAC1C3602B4906C092F3E999C36C03C074AA673BEB39A2064E994DE5230"
+}

@@ -9,15 +9,20 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <AssemblyName>Creality-OrcaSlicer-2.4.2-Patch-Installer</AssemblyName>
+    <PatchTargetVersion Condition="'$(PatchTargetVersion)' == ''">2.4.2</PatchTargetVersion>
+    <PatchTargetCommit Condition="'$(PatchTargetCommit)' == ''">8500fcdccaa10b5099ac20d252af3a7c560046f1</PatchTargetCommit>
+    <PatchAssemblyVersion Condition="'$(PatchAssemblyVersion)' == ''">2.4.2.1</PatchAssemblyVersion>
+    <AssemblyName>Creality-OrcaSlicer-$(PatchTargetVersion)-Patch-Installer</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>2.4.2.1</Version>
-    <FileVersion>2.4.2.1</FileVersion>
-    <AssemblyVersion>2.4.2.1</AssemblyVersion>
-    <Product>Creality OrcaSlicer 2.4.2 Patch Installer</Product>
+    <Version>$(PatchAssemblyVersion)</Version>
+    <FileVersion>$(PatchAssemblyVersion)</FileVersion>
+    <AssemblyVersion>$(PatchAssemblyVersion)</AssemblyVersion>
+    <Product>Creality OrcaSlicer $(PatchTargetVersion) Patch Installer</Product>
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyMetadata Include="PatchTargetVersion" Value="$(PatchTargetVersion)" />
+    <AssemblyMetadata Include="PatchTargetCommit" Value="$(PatchTargetCommit)" />
     <EmbeddedResource Include="payload.zip" />
   </ItemGroup>
 </Project>
