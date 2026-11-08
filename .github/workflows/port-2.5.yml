@@ -107,6 +107,8 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Package and verify installer
         run: ./scripts/package-2.5.ps1 -BuiltDirectory orca/build/OrcaSlicer -WorkDirectory build/package -OutputDirectory release/2.5.0
+      - name: Check actual sliced G-code multiplier and baked volumes
+        run: python tests/test_gcode_export.py --binary orca/build/OrcaSlicer/orca-slicer.exe --profiles orca/build/OrcaSlicer/resources/profiles --work build/gcode-export
       - name: Upload tested build and manifest
         uses: actions/upload-artifact@v4
         with:
@@ -121,6 +123,7 @@ jobs:
           path: |
             orca/dependencies.log
             orca/slicer.log
+            build/gcode-export/*.log
             orca/build/CMakeFiles/CMakeConfigureLog.yaml
             orca/deps/build/**/CMakeFiles/CMakeConfigureLog.yaml
             orca/deps/build/**/src/*-stamp/*-*.log
